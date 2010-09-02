@@ -204,11 +204,15 @@ class Corto_ProxyServer
         return  'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $this->selfPath($entityid);
     }
 
-    public function selfPath($entityid = null)
-    {
-        return $_SERVER['SCRIPT_NAME'] . '/' . $entityid ;
-    }
+	public function selfPath($entityid = null)
+	{
+		return $_SERVER['SCRIPT_NAME'] . ($entityid ? '/' . $entityid : '');
+	}
 
+	public function selfDestination() {
+		return self::selfUrl() . $_SERVER['PATH_INFO'];
+	}
+	
     public function getHostedEntityUrl($entityCode, $serviceName = "", $remoteEntityId = "")
     {
         $entityPart = $entityCode;
@@ -446,7 +450,7 @@ class Corto_ProxyServer
             $request['samlp:Scoping']['_ProxyCount'] = $this->getConfig('max_proxies', 10);
         }
 
-        // Add ourselves as requester
+        // Add the issuer of the original request as requester
         if (!isset($request['samlp:Scoping']['samlp:RequesterID'])) {
             $request['samlp:Scoping']['samlp:RequesterID'] = array();
         }
