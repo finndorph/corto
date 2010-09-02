@@ -63,7 +63,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     {
         $request = $this->_receiveMessage(self::KEY_REQUEST);
         $request['_ForceAuthn'] = isset($request['_ForceAuthn']) && ($request['_ForceAuthn'] == 'true' || $request['_ForceAuthn'] == '1');
-        $request['_IsPassive']   = isset($request['_IsPassive']) && ($request['_IsPassive'] == 'true' || $request['_IsPassive'] == '1');
+        $request['_IsPassive']  = isset($request['_IsPassive']) && ($request['_IsPassive'] == 'true' || $request['_IsPassive'] == '1');
 
         $this->_server->getSessionLog()->debug("Received request: " . var_export($request, true));
 
@@ -537,7 +537,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     {
         $destinationId = $message['_Destination'];
         if ($destinationId && $this->_verifyDestination) { // Destination is optional
-            if (strpos($this->_server->getCurrentEntityUrl(), $destinationId) !== 0) {
+            if ($this->_server->selfDestination() != $destinationId) {
                 throw new Corto_Module_Bindings_VerificationException("Destination: '$destinationId' is not here; message not destined for us");
             }
         }
