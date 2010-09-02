@@ -14,7 +14,6 @@
 		'__' => array(
 			'paramname' => 'SAMLResponse',
 			'RelayState' => $request['__']['RelayState'],
-			'target' => $request['__']['target'],
 		),
 		'_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
 		'_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',

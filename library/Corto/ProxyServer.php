@@ -610,7 +610,6 @@ class Corto_ProxyServer
             Corto_XmlToArray::PRIVATE_KEY_PREFIX => array(
                 'paramname' => 'SAMLResponse',
                 'RelayState'=> $request['__']['RelayState'],
-                'target'    => (isset($request['__']['target'])?$request['__']['target']:''),
             ),
             '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
             '_xmlns:saml'  => 'urn:oasis:names:tc:SAML:2.0:assertion',
@@ -666,10 +665,10 @@ class Corto_ProxyServer
         }
     }
 
-    public function getReceivedRequestFromResponseTarget($id)
+    public function getReceivedRequestFromResponse($id)
     {
         if (!$id || !isset($_SESSION[$id])) {
-            throw new Corto_ProxyServer_Exception("Unknown id ($id) in POST target or InResponseTo attribute?!?");
+            throw new Corto_ProxyServer_Exception("Unknown id ($id) in InResponseTo attribute?!?");
         }
 
         // Get the ID of the original request (from the SP)

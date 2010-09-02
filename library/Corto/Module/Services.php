@@ -141,13 +141,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // Get the ID of the Corto Request message
-        $id = isset($_POST['target']) ? $_POST['target'] : $receivedResponse['_InResponseTo'];
-        if (!$id) {
-            $message = "Unsollicited assertion (no target in POST or InResponseTo in message) not supported!";
+        if (!$receivedResponse['_InResponseTo']) {
+            $message = "Unsollicited assertion (no InResponseTo in message) not supported!";
             throw new Corto_Module_Services_Exception($message);
         }
 
-        $receivedRequest = $this->_server->getReceivedRequestFromResponseTarget($receivedResponse['_InResponseTo']);
+        $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
 
         $processingEntities = $this->_getReceivedResponseProcessingEntities($receivedRequest, $receivedResponse);
         if (!empty($processingEntities)) {
@@ -292,7 +291,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $response['_Destination']          = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
             $response['__']['ProtocolBinding'] = $_SESSION['Processing'][$response['_ID']]['OriginalBinding'];
 
-            $receivedRequest = $this->_server->getReceivedRequestFromResponseTarget($response['_InResponseTo']);
+            $receivedRequest = $this->_server->getReceivedRequestFromResponse($response['_InResponseTo']);
 
             $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);

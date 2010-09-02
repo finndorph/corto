@@ -678,7 +678,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             $queryString = "$messageType=" . $encodedMessage;
         }
         $queryString .= $message['__']['RelayState'] ? '&RelayState=' . urlencode($message['__']['RelayState']) : "";
-        $queryString .= $message['__']['target']     ? '&target='     . urlencode($message['__']['target'])     : "";
 
         // Sign the message
         if (isset($remoteEntity['SharedKey'])) {
@@ -789,7 +788,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         }
 
         $extra  = isset($message['__']['RelayState']) ? '<input type="hidden" name="RelayState" value="' . htmlspecialchars($message['__']['RelayState']) . '">' : '';
-        $extra .= isset($message['__']['target'])     ? '<input type="hidden" name="target" value="'     . htmlspecialchars($message['__']['target']) . '">' : '';
         $extra .= isset($message['__']['return'])     ? '<input type="hidden" name="return" value="'     . htmlspecialchars($message['__']['return']) . '">' : '';
         $encodedMessage = htmlspecialchars(base64_encode($encodedMessage));
 
