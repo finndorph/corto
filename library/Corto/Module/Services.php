@@ -18,11 +18,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
     {
         $request = $this->_server->getBindingsModule()->receiveRequest();
         $scopedIDPs = array();
-        
-        // 
-        if ($this->_server->getCurrentEntitySetting('TransparentProxy', false)) {
-            $request['__']['Transparent'] = true;
-        }
+        $request['__']['Transparent'] = $this->_server->getCurrentEntitySetting('TransparentProxy', false);
 
         // If ForceAuthn attribute is on, then remove cached responses and cached IDPs
         if ($request['_ForceAuthn']) {
