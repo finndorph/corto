@@ -62,6 +62,13 @@ class Corto_Module_Services extends Corto_Module_Abstract
             return $this->_server->sendResponseToRequestIssuer($request, $response);
         }
 
+        // If we have an IdP configured then we send the authentication request to that Idp
+        $presetIdp = $this->_server->getCurrentEntitySetting('Idp');
+        if ($presetIdp) {
+            $this->_server->getSessionLog()->debug("SSO: Preset idp found: '$presetIdp'");
+            return $this->_server->sendAuthenticationRequest($request, $presetIdp);
+        }
+
         // Get all registered Single Sign On Services
         $candidateIDPs = array();        
         foreach ($this->_server->getRemoteEntities() as $remoteEntityId => $remoteEntity) {

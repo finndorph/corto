@@ -270,35 +270,6 @@ class Corto_ProxyServer
         $this->getSessionLog()->debug("Done calling service '$serviceName'");
     }
 
-    protected function _setCurrentEntity($entityCode, $remoteIdPMd5 = "")
-    {
-        $entityId = $this->getHostedEntityUrl($entityCode);
-        $hostedEntity = array();
-        if (isset($this->_entities['hosted'][$entityId])) {
-            $hostedEntity = $this->_entities['hosted'][$entityId];
-        }
-
-        $hostedEntity['EntityId']   = $entityId;
-        $hostedEntity['EntityCode'] = $entityCode;
-
-        if ($remoteIdPMd5) {
-            $remoteEntityIds = array_keys($this->_entities['remote']);
-            foreach ($remoteEntityIds as $remoteEntityId) {
-                if (md5($remoteEntityId) === $remoteIdPMd5) {
-                    $hostedEntity['idp'] = $remoteEntityId;
-                    $hostedEntity['TransparentProxy'] = true;
-                    $this->getSessionLog()->debug("Detected pre-selection of $remoteEntityId as IdP, switching to transparant mode");
-                    break;
-                }
-            }
-            if (!isset($hostedEntity['IdP'])) {
-                $this->getSessionLog()->warn("Unable to map $remoteIdPMd5 to a remote entity!");
-            }
-        }
-
-        $this->setCurrentEntity($hostedEntity);
-    }
-
     protected function _getParametersFromUri($uri)
     {
         $parameters = array(
@@ -350,13 +321,13 @@ class Corto_ProxyServer
             $remoteEntityIds = array_keys($this->_entities['remote']);
             foreach ($remoteEntityIds as $remoteEntityId) {
                 if (md5($remoteEntityId) === $remoteIdPMd5) {
-                    $hostedEntity['idp'] = $remoteEntityId;
+                    $hostedEntity['Idp'] = $remoteEntityId;
                     $hostedEntity['TransparantProxy'] = true;
                     $this->getSessionLog()->debug("Detected pre-selection of $remoteEntityId as IdP, switching to transparant mode");
                     break;
                 }
             }
-            if (!isset($hostedEntity['IdP'])) {
+            if (!isset($hostedEntity['Idp'])) {
                 $this->getSessionLog()->warn("Unable to map $remoteIdPMd5 to a remote entity!");
             }
         }
@@ -501,8 +472,10 @@ class Corto_ProxyServer
             $authenticatingAuthorities[] = array('__v' => $sourceResponse['saml:Issuer']['__v']);
         }
 
+        $acs = $this->_getRequestAssertionConsumer($request);
+
         $subjectConfirmation = &$response['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData'];
-        $subjectConfirmation['_Recipient']    = $request['_AssertionConsumerServiceURL'];
+        $subjectConfirmation['_Recipient']    = $acs['Location'];
         $subjectConfirmation['_InResponseTo'] = $request['_ID'];
 
         $response['saml:Assertion']['saml:Issuer'] = array('__v' => $response['saml:Issuer']['__v']);
@@ -630,22 +603,28 @@ class Corto_ProxyServer
         $destinationID = $request['saml:Issuer']['__v'];
         $response['__']['destinationid'] = $destinationID;
 
-        if ($acsUrl = $request['_AssertionConsumerServiceURL']) {
-            $response['_Destination'] = $acsUrl;
-            $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
-        } else {
-            $remoteEntity = $this->getRemoteEntity($destinationID);
-            $remoteAcs = $remoteEntity['AssertionConsumerService'];
-
-            $response['_Destination']           = $remoteAcs['Location'];
-            $response['__']['ProtocolBinding']  = $remoteAcs['Binding'];
-        }
+        $acs = $this->_getRequestAssertionConsumer($request);
+        $response['_Destination']           = $acs['Location'];
+        $response['__']['ProtocolBinding']  = $acs['Binding'];
 
         if (!$response['_Destination']) {
             throw new Corto_ProxyServer_Exception("No Destination in request or metadata for: $destinationID");
         }
 
         return $response;
+    }
+
+    protected function _getRequestAssertionConsumer(array $request)
+    {
+        $acs = array();
+        if (isset($request['_AssertionConsumerServiceURL'])) {
+            $acs['Location'] = $request['_AssertionConsumerServiceURL'];
+            $acs['Binding']  = $request['_ProtocolBinding'];
+        } else {
+            $remoteEntity = $this->getRemoteEntity($request['saml:Issuer']['__v']);
+            $acs = $remoteEntity['AssertionConsumerService'];
+        }
+        return $acs;
     }
 
     function sendResponseToRequestIssuer($request, $response)
@@ -718,19 +697,19 @@ class Corto_ProxyServer
         }
     }
 
-    protected function callAttributeFilter($entityMetaData, $callback, $response)
+    protected function callAttributeFilter($entityMetaData, $callback, &$response)
     {
         if (!$callback || !is_callable($callback)) {
             // @todo Non existing callbacks shouldn't give an exception, just a warning...
             throw new Corto_ProxyServer_Exception('callback: ' . var_export($callback, true) . ' isn\'t callable');
         }
 
-        $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement']['saml:Attribute'];
+        $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
 
         // Take the attributes out
         $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
         // Pass em along
-        call_user_func_array($callback, array($entityMetaData, $response, $attributes));
+        call_user_func_array($callback, array($entityMetaData, $response, &$attributes));
         // Put em back where they belong
         $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
     }
