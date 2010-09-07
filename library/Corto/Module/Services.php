@@ -284,7 +284,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $response = $this->_server->getBindingsModule()->receiveResponse();
         $remainingProcessingEntities = &$_SESSION['Processing'][$response['_ID']]['RemainingEntities'];
 
-        if (!empty($remainingProcessingEntities)) {
+        if (!empty($remainingProcessingEntities)) { // Moar processing!
             $nextProcessingEntity = array_shift($remainingProcessingEntities);
 
             // Change the destiny of the received response
@@ -294,7 +294,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
             return $this->_server->getBindingsModule()->send($receivedResponse, $nextProcessingEntity);
         }
-        else {
+        else { // Done processing! Send off to SP
             $response['_Destination']          = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
             $response['__']['ProtocolBinding'] = $_SESSION['Processing'][$response['_ID']]['OriginalBinding'];
 
@@ -366,10 +366,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
         );
 
         $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntitiesDescriptor', true);
-        if ($this->_server->getConfig('debug', false) && ini_get('allow_url_fopen')) {
+
+        $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
+        if ($this->_server->getConfig('debug', false)  && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
             $dom = new DOMDocument();
             $dom->loadXML($xml);
-            if (!$dom->schemaValidate('http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd')) {
+            if (!$dom->schemaValidate($schemaUrl)) {
                 echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($xml)).'</pre>';
                 throw new Exception('Metadata XML doesnt validate against XSD at Oasis-open.org?!');
             }
@@ -436,10 +438,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
         );
 
         $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntitiesDescriptor', true);
-        if ($this->_server->getConfig('debug', false) && ini_get('allow_url_fopen')) {
+
+        $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
+        if ($this->_server->getConfig('debug', false) && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
             $dom = new DOMDocument();
             $dom->loadXML($xml);
-            if (!$dom->schemaValidate('http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd')) {
+            if (!$dom->schemaValidate($schemaUrl)) {
                 echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($xml)).'</pre>';
                 throw new Exception('Metadata XML doesnt validate against XSD at Oasis-open.org?!');
             }
