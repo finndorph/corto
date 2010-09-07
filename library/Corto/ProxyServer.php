@@ -21,8 +21,6 @@ class Corto_ProxyServer
     const MESSAGE_TYPE_REQUEST  = 'SAMLRequest';
     const MESSAGE_TYPE_RESPONSE = 'SAMLResponse';
 
-    const DEFAULT_URN_PREFIX = 'urn:mace:dir:attribute-def:';
-
     protected $_requestArray;
     protected $_responseArray;
 
@@ -147,15 +145,12 @@ class Corto_ProxyServer
         return $description;
     }
 
-    protected function _getAttributeDataType($type, $uid, $ietfLanguageTag = 'en_US')
+    protected function _getAttributeDataType($type, $name, $ietfLanguageTag = 'en_US')
     {
-        if (isset($this->_attributes[$uid][$type][$ietfLanguageTag])) {
-            return $this->_attributes[$uid][$type][$ietfLanguageTag];
+        if (isset($this->_attributes[$name][$type][$ietfLanguageTag])) {
+            return $this->_attributes[$name][$type][$ietfLanguageTag];
         }
-        if (isset($this->_attributes[self::DEFAULT_URN_PREFIX . $uid][$type][$ietfLanguageTag])) {
-            return $this->_attributes[self::DEFAULT_URN_PREFIX . $uid][$type][$ietfLanguageTag];
-        }
-        var_dump("Unable to find $uid, $type, $ietfLanguageTag even with prefix: " . self::DEFAULT_URN_PREFIX . $uid . '... cant find it man');
+        var_dump("Unable to find $name, $type, $ietfLanguageTag");
         // @todo warn the system! requested a unkown UID or langauge...
     }
 
@@ -556,21 +551,7 @@ class Corto_ProxyServer
             $attributeStatement['AttributeConsumingServiceIndex'] = '-no AttributeConsumingServiceIndex given-';
         }
 
-        $response['saml:Assertion']['saml:AttributeStatement']['saml:Attribute'] = Corto_XmlToArray::array2attributes($attributeStatement);
-        $extraAttributes = Array(
-            '_Name' => 'xuid',
-            '_NameFormat' => 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic',
-            'saml:AttributeValue' => Array(
-                Array(
-                    '_xsi:type' => 'xs:string',
-                    '__v' => 'abc@xxx',
-                ),
-                Array(
-                    '_xsi:type' => 'xs:string',
-                    '__v' => 'def@yyy',
-                ),
-            ),
-        );
+        $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'] = Corto_XmlToArray::array2attributes($attributeStatement);
 
         return $response;
     }
