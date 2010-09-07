@@ -777,10 +777,12 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             }
 
             $encodedMessage = Corto_XmlToArray::array2xml($message);
-            if ($this->_server->getConfig('debug')) {
+
+            $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-protocol-2.0.xsd';
+            if ($this->_server->getConfig('debug') && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
                 $dom = new DOMDocument();
                 $dom->loadXML($encodedMessage);
-                if (!$dom->schemaValidate('http://docs.oasis-open.org/security/saml/v2.0/saml-schema-protocol-2.0.xsd')) {
+                if (!$dom->schemaValidate($schemaUrl)) {
                     //echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($encodedMessage)).'</pre>';
                     //throw new Exception('Message XML doesnt validate against XSD at Oasis-open.org?!');
                 }
