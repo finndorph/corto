@@ -660,13 +660,6 @@ class Corto_ProxyServer
         $requestIssuer = $request['saml:Issuer']['__v'];
         $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
 
-        echo "<pre>SP:".PHP_EOL;
-        var_dump($spEntityMetadata);
-        echo "IdP:" . PHP_EOL;
-        var_dump($idpEntityMetadata);
-        echo "</pre>";
-
-
         if (isset($idpEntityMetadata['filter'])) {
             $this->callAttributeFilter($idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
