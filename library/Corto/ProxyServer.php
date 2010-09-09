@@ -221,7 +221,9 @@ class Corto_ProxyServer
     public function getRemoteEntity($entityId)
     {
         if (isset($this->_entities['remote'][$entityId])) {
-            return $this->_entities['remote'][$entityId];
+            $entity = $this->_entities['remote'][$entityId];
+            $entity['EntityId'] = $entityId;
+            return $entity;
         }
     }
 
@@ -615,7 +617,7 @@ class Corto_ProxyServer
 
         if ($response['samlp:Status']['samlp:StatusCode']['_Value'] == 'urn:oasis:names:tc:SAML:2.0:status:Success') {
 
-            $this->filterOutputAssertionAttributes($response);
+            $this->filterOutputAssertionAttributes($response, $request);
 
             return $this->getBindingsModule()->send($response, $sp);
         }
@@ -648,37 +650,50 @@ class Corto_ProxyServer
 
 ////////  ATTRIBUTE FILTERING /////////
 
-    public function filterInputAssertionAttributes(&$response)
+    public function filterInputAssertionAttributes(&$response, $request)
     {
-        $hostedEntityMetaData = $this->getCurrentEntity();
+        $hostedEntityMetaData = $this->_entities['current'];
 
         $responseIssuer = $response['saml:Issuer']['__v'];
-        $remoteEntityMetaData = $this->getRemoteEntity($responseIssuer);
+        $idpEntityMetadata = $this->getRemoteEntity($responseIssuer);
 
-        if (isset($remoteEntityMetaData['filter'])) {
-            $this->callAttributeFilter($remoteEntityMetaData, $remoteEntityMetaData['filter'], $response);
+        $requestIssuer = $request['saml:Issuer']['__v'];
+        $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
+
+        echo "<pre>SP:".PHP_EOL;
+        var_dump($spEntityMetadata);
+        echo "IdP:" . PHP_EOL;
+        var_dump($idpEntityMetadata);
+        echo "</pre>";
+
+
+        if (isset($idpEntityMetadata['filter'])) {
+            $this->callAttributeFilter($idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
         if (isset($hostedEntityMetaData['infilter'])) {
-            $this->callAttributeFilter($hostedEntityMetaData, $hostedEntityMetaData['infilter'], $response);
+            $this->callAttributeFilter($hostedEntityMetaData['infilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
     }
 
-    public function filterOutputAssertionAttributes(&$response)
+    public function filterOutputAssertionAttributes(&$response, $request)
     {
-        $responseDestination = $response['__']['destinationid'];
-
         $hostedMetaData = $this->_entities['current'];
-        $remoteMetaData = $this->_entities['remote'][$responseDestination];
+        
+        $responseDestination = $response['__']['destinationid'];
+        $idpEntityMetadata = $this->_entities['remote'][$responseDestination];
 
-        if (isset($remoteMetaData['filter'])) {
-            $this->callAttributeFilter($remoteMetaData, $remoteMetaData['filter'], $response);
+        $requestIssuer = $request['saml:Issuer']['__v'];
+        $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
+
+        if (isset($idpEntityMetadata['filter'])) {
+            $this->callAttributeFilter($idpEntityMetadata, $idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
-        if ($hostedMetaData['outfilter']) {
-            $this->callAttributeFilter($hostedMetaData, $hostedMetaData['outfilter'], $response);
+        if (isset($hostedMetaData['outfilter'])) {
+            $this->callAttributeFilter($hostedMetaData, $hostedMetaData['outfilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
     }
 
-    protected function callAttributeFilter($entityMetaData, $callback, &$response)
+    protected function callAttributeFilter($callback, array &$response, array $request, array $spEntityMetadata, array $idpEntityMetadata)
     {
         if (!$callback || !is_callable($callback)) {
             // @todo Non existing callbacks shouldn't give an exception, just a warning...
@@ -688,11 +703,11 @@ class Corto_ProxyServer
         $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
 
         // Take the attributes out
-        $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
+        $responseAttributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
         // Pass em along
-        call_user_func_array($callback, array($entityMetaData, $response, &$attributes));
+        call_user_func_array($callback, array(&$response, &$responseAttributes, $request, $spEntityMetadata, $idpEntityMetadata));
         // Put em back where they belong
-        $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
+        $responseAssertionAttributes = Corto_XmlToArray::array2attributes($responseAttributes);
     }
 
 ////////  TEMPLATE RENDERING /////////

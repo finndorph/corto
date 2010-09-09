@@ -139,14 +139,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
     {        
         $receivedResponse = $this->_server->getBindingsModule()->receiveResponse();
 
-        $this->_server->filterInputAssertionAttributes($receivedResponse);
-
-        // Cache the response
-        if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-            $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
-            $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
-        }
-
         // Get the ID of the Corto Request message
         if (!$receivedResponse['_InResponseTo']) {
             $message = "Unsollicited assertion (no InResponseTo in message) not supported!";
@@ -154,6 +146,14 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
+
+        $this->_server->filterInputAssertionAttributes($receivedResponse, $receivedRequest);
+
+        // Cache the response
+        if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
+            $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
+            $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
+        }
 
         $processingEntities = $this->_getReceivedResponseProcessingEntities($receivedRequest, $receivedResponse);
         if (!empty($processingEntities)) {
