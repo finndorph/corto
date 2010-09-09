@@ -136,7 +136,7 @@ $attributes = array (
       'en_US' => 'a two letter abbreviation according to ISO 639; no subcodes',
     ),
   ),
-  'urn:mace:terena.org:schac:schacHomeOrganization' =>
+  'urn:mace:terena.org:attribute-def:schacHomeOrganization' =>
   array (
     'Name' =>
     array (
@@ -149,7 +149,7 @@ $attributes = array (
       'en_US' => 'name for the organization, making use of the domain name of the  organization conform RFC 1035',
     ),
   ),
-  'urn:mace:terena.org:schac:schacHomeOrganizationType' =>
+  'urn:mace:terena.org:attribute-def:schacHomeOrganizationType' =>
   array (
     'Name' =>
     array (

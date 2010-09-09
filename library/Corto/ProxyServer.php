@@ -150,8 +150,8 @@ class Corto_ProxyServer
         if (isset($this->_attributes[$name][$type][$ietfLanguageTag])) {
             return $this->_attributes[$name][$type][$ietfLanguageTag];
         }
-        var_dump("Unable to find $name, $type, $ietfLanguageTag");
         // @todo warn the system! requested a unkown UID or langauge...
+        return $name;
     }
 
     public function getCurrentEntity()
