@@ -41,6 +41,7 @@ class Corto_XmlToArray
         'http://schemas.xmlsoap.org/soap/envelope/'     => 'SOAP-ENV',
         'http://www.w3.org/2000/09/xmldsig#'            => 'ds',
         'http://www.w3.org/2001/04/xmlenc#'             => 'xenc',
+        'corto.wayf.dk'			                        => 'corto',
      );
 
     /**
@@ -123,22 +124,10 @@ class Corto_XmlToArray
         'ds:SignedInfo',
 #        'ds:SPKIData',
         'ds:Transforms',
-#        'ds:X509Data',
-);
-
-    protected static $_multipleValues = array(
-        'saml:Attribute',
-        'saml:EncryptedAttribute',
-        'saml:AttributeValue',
-        'samlp:IDPEntry',
-        'saml:AuthenticatingAuthority',
-        'samlp:RequesterID',
+        'ds:X509Data',
         'ds:X509Certificate',
-        'ds:Transform',
-        'md:EntityDescriptor',
-        'md:KeyDescriptor',
-#        'md:AssertionConsumerService',
-    );
+		'corto:IDPList',
+);
 
     public static function xml2array($xml)
     {
@@ -151,9 +140,8 @@ class Corto_XmlToArray
                 'Error code: '.xml_error_string(xml_get_error_code($parser)) . PHP_EOL .
                 'XML: ' . $xml);
         }
-
         xml_parser_free($parser);
-          self::$_singulars = array_fill_keys(self::$_singulars, 1);
+        self::$_singulars = array_fill_keys(self::$_singulars, 1);
         $return = self::_xml2array($values);
         return $return[0];
     }
@@ -174,7 +162,7 @@ class Corto_XmlToArray
     {
         static $defaultNs;
         $newElement = array();
-        while($value = $elements[self::$c++]) {
+        while(isset($elements[self::$c]) && $value = $elements[self::$c++]) {
             if ($value['type'] == 'close') {
                 return $newElement;
             } elseif ($value['type'] == 'cdata') {
@@ -188,14 +176,15 @@ class Corto_XmlToArray
                     unset($attributes[$attributeKey]);
 
                     if (preg_match("/^xmlns:(.+)$/", $attributeKey, $namespacePrefixAndTag)) {
-                        if (!self::$_namespaces[$attributeValue]) {
+                        if (empty(self::$_namespaces[$attributeValue])) {
                             self::$_namespaces[$attributeValue] = $namespacePrefixAndTag[1];
                         }
                         $namespaceMapping[$namespacePrefixAndTag[1]] = self::$_namespaces[$attributeValue];
                         $hashedAttributes['_xmlns:'.self::$_namespaces[$attributeValue]] = $attributeValue;
                     } elseif (preg_match("/^xmlns$/", $attributeKey)) {
                         $defaultNs = self::$_namespaces[$attributeValue];
-                    } else {
+                        $hashedAttributes['_xmlns:'.$defaultNs] = $attributeValue;
+                   } else {
                         $hashedAttributes[self::ATTRIBUTE_KEY_PREFIX . $attributeKey] = $attributeValue;
                     }
                 }
@@ -218,21 +207,15 @@ class Corto_XmlToArray
                 foreach($cs as $c) {
                     $tagName = $c[self::TAG_NAME_KEY];
                     unset($c[self::TAG_NAME_KEY]);
-#                   if (in_array($tagName, self::$_multipleValues)) {
-#                    if (!in_array($tagName, self::$_singulars)) {
-                    if (!self::$_singulars[$tagName]) {
+                    if (!isset(self::$_singulars[$tagName])) {
                         $complete[$tagName][] = $c;
                     } else {
                         $complete[$tagName] = $c;
                         unset($complete[$tagName][self::TAG_NAME_KEY]);
                     }
                 }
-            } elseif ($value['type'] == 'complete') {
-            }
-            if ($level == 2) {
-#                print_r($complete);
-#                print time() . "\n";    
-            }
+            } #elseif ($value['type'] == 'complete') {
+#            }
             $newElement[] = $complete;
         }
         return $newElement;

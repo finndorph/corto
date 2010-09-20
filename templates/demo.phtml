@@ -32,14 +32,16 @@
         displayed
         at 'null' in print_r format. When the response get back to
         'app' it will also be displayed on this page in print_r format.
-        <?= $message ?>
-        <form method=POST action="<?= $action ?>">
+       <form method=POST action="<?= $action ?>">
         	<input type=hidden name=doit value=1>
             <input type=submit value="Demo">
         </form>
 
-        <pre>
-        <?= preg_replace("/\n\n/", "\n", preg_replace("/Array\n\s+/", "Array ", htmlspecialchars(print_r($hSAMLResponse, 1)))); ?>
+        <p>
+       <?= $message ?>
+       </p>
+         <pre>
+        <?= preg_replace("/\n\n/", "\n", preg_replace("/Array\n\s+/", "Array ", htmlspecialchars(print_r($SAMLResponse, 1)))); ?>
         </pre>
     </body>
 </html>

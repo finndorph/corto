@@ -2,21 +2,18 @@
 
 require_once 'Abstract.php';
 
-class Corto_Module_Services_Exception extends Corto_ProxyServer_Exception
-{
+class Corto_Module_Services_Exception extends Corto_ProxyServer_Exception {
 }
 
-class Corto_Module_Services extends Corto_Module_Abstract
-{
-    const DEFAULT_REQUEST_BINDING  = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
+class Corto_Module_Services extends Corto_Module_Abstract {
+    const DEFAULT_REQUEST_BINDING = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
     const DEFAULT_RESPONSE_BINDING = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST';
 
     /**
      * Handle a Single Sign On request (Authentication Request)
      */
-    public function singleSignOnService()
-    {
-        $request = $this->_server->getBindingsModule()->receiveRequest();
+    public function singleSignOnService($params) {
+        $request = $this->_server->getBindingsModule()->receiveRequest($params);
         $scopedIDPs = array();
         $request['__']['Transparent'] = $this->_server->getCurrentEntitySetting('TransparentProxy', false);
 
@@ -35,8 +32,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // If we configured an IDPList it overrides the one in the request
-        // IDPLIst might contain only one idp!
-        $presetIdPs = $this->_server->getCurrentEntitySetting('IDPList');
+        // IDPList might contain only one idp!
+        $presetIdPs = $this->_server->getPresetIDPs();
         if ($presetIdPs) {
             $scopedIDPs = $presetIdPs;
             $this->_server->getSessionLog()->debug("SSO: Scoped idps found in metadata: " . print_r($scopedIDPs, 1));
@@ -45,7 +42,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         // If one of the scoped IDP has a cache entry, return that
         $cachedIDPs = array();
         if (isset($_SESSION['CachedResponses'])) {
-            $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']); 
+            $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']);
         }
 
         if ($commonIDPs = array_intersect($cachedIDPs, $scopedIDPs) || (sizeof($scopedIDPs) == 0 && $commonIDPs = $cachedIDPs)) {
@@ -70,18 +67,14 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // Get all registered Single Sign On Services
-        $candidateIDPs = array();        
-        foreach ($this->_server->getRemoteEntities() as $remoteEntityId => $remoteEntity) {
-            if (isset($remoteEntity['SingleSignOnService'])) {
-                $candidateIDPs[] = $remoteEntityId;
-            }
-        }
+        $candidateIDPs = $this->_server->getAllowedIdps();
 
         $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
-                
+
         // If we have scoping, filter out every non-scoped IdP
         $candidateIDPs = sizeof($scopedIDPs) > 0 ? array_intersect($scopedIDPs, $candidateIDPs) : $candidateIDPs;
         $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
+
 
         // Exactly 1 candidate found, send authentication request to the first one
         if (count($candidateIDPs) === 1) {
@@ -118,14 +111,13 @@ class Corto_Module_Services extends Corto_Module_Abstract
      *
      * @return void
      */
-    public function continueToIdP()
-    {
+    public function continueToIdP() {
         $selectedIdp = $_REQUEST['idp'];
 
         // Retrieve the request from the session.
-        $id      = $_POST['ID'];
+        $id = $_POST['ID'];
         $request = $_SESSION[$id]['SAMLRequest'];
-        
+
         $this->_server->sendAuthenticationRequest($request, $selectedIdp);
     }
 
@@ -135,9 +127,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
      * @throws Corto_Module_Services_Exception
      * @return void
      */
-    public function assertionConsumerService()
-    {        
-        $receivedResponse = $this->_server->getBindingsModule()->receiveResponse();
+    public function assertionConsumerService($params) {
+        $receivedResponse = $this->_server->getBindingsModule()->receiveResponse($params);
 
         // Get the ID of the Corto Request message
         if (!$receivedResponse['_InResponseTo']) {
@@ -146,6 +137,13 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
+
+        // @todo filtering and processing should be don on both the sp- and the idpside
+        // @todo cross federation bridging
+        if ($proxyIDP = nvl($receivedRequest['__'], 'ProxyIDP')) {
+            $this->_server->setCurrentEntity($proxyIDP);
+            $this->_server->startSession();
+        }
 
         $this->_server->filterInputAssertionAttributes($receivedResponse, $receivedRequest);
 
@@ -158,15 +156,16 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $processingEntities = $this->_getReceivedResponseProcessingEntities($receivedRequest, $receivedResponse);
         if (!empty($processingEntities)) {
             $firstProcessingEntity = array_shift($processingEntities);
-            $_SESSION['Processing'][$receivedResponse['_ID']]['RemainingEntities']   = $processingEntities;
+            $_SESSION['Processing'][$receivedResponse['_ID']]['RemainingEntities'] = $processingEntities;
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalDestination'] = $receivedResponse['_Destination'];
-            $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding']     = $receivedResponse['__']['ProtocolBinding'];
+            $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding'] = $receivedResponse['__']['ProtocolBinding'];
 
             // Change the destiny of the received response
-            $receivedResponse['_Destination']           = $firstProcessingEntity['Location'];
-            $receivedResponse['__']['ProtocolBinding']  = $firstProcessingEntity['Binding'];
-            $receivedResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $receivedResponse['_Destination'] = $firstProcessingEntity['Location'];
+            $receivedResponse['__']['ProtocolBinding'] = $firstProcessingEntity['Binding'];
+            $receivedResponse['__']['Return'] = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
 
+            // @todo protocol ?
             $responseAssertionAttributes = &$receivedResponse['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
             $attributes['ServiceProvider'] = array($receivedRequest['saml:Issuer']['__v']);
@@ -175,13 +174,13 @@ class Corto_Module_Services extends Corto_Module_Abstract
             return $this->_server->getBindingsModule()->send($receivedResponse, $firstProcessingEntity);
         }
         else {
+            // if $receivedRequest['originalIDP'] change current to that 
             $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
             return $this->_server->sendResponseToRequestIssuer($receivedRequest, $receivedResponse);
         }
     }
 
-    protected function _getReceivedResponseProcessingEntities(array $receivedRequest, array $receivedResponse)
-    {
+    protected function _getReceivedResponseProcessingEntities(array $receivedRequest, array $receivedResponse) {
         $currentEntityProcessing = $this->_server->getCurrentEntitySetting('Processing', array());
 
         $remoteEntity = $this->_server->getRemoteEntity($receivedRequest['saml:Issuer']['__v']);
@@ -201,13 +200,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
      *
      * @return void
      */
-    public function provideConsentService()
-    {
+    public function provideConsentService() {
         $response = $this->_server->getBindingsModule()->receiveResponse();
         $_SESSION['consent'][$response['_ID']]['response'] = $response;
 
         $attributes = Corto_XmlToArray::attributes2array(
-                $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
+            $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
         );
         $serviceProviderEntityId = $attributes['ServiceProvider'][0];
         unset($attributes['ServiceProvider']);
@@ -226,12 +224,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         $html = $this->_server->renderTemplate(
-                'consent',
-                array(
-                    'action'        => $this->_server->getCurrentEntityUrl('processConsentService'),
-                    'ID'            => $response['_ID'],
-                    'attributes'    => $attributes,
-        ));
+            'consent',
+            array(
+                'action' => $this->_server->getCurrentEntityUrl('processConsentService'),
+                'ID' => $response['_ID'],
+                'attributes' => $attributes,
+            ));
         $this->_server->sendOutput($html);
     }
 
@@ -242,12 +240,11 @@ class Corto_Module_Services extends Corto_Module_Abstract
      *
      * @return void
      */
-    public function processConsentService()
-    {
+    public function processConsentService() {
         $response = $_SESSION['consent'][$_POST['ID']]['response'];
 
         $attributes = Corto_XmlToArray::attributes2array(
-                $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
+            $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
         );
         $serviceProviderEntityId = $attributes['ServiceProvider'][0];
         unset($attributes['ServiceProvider']);
@@ -279,8 +276,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
      *
      * @return void
      */
-    public function processedAssertionConsumerService()
-    {
+    public function processedAssertionConsumerService() {
         $response = $this->_server->getBindingsModule()->receiveResponse();
         $remainingProcessingEntities = &$_SESSION['Processing'][$response['_ID']]['RemainingEntities'];
 
@@ -288,14 +284,14 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $nextProcessingEntity = array_shift($remainingProcessingEntities);
 
             // Change the destiny of the received response
-            $receivedResponse['_Destination']           = $nextProcessingEntity['Location'];
-            $receivedResponse['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
-            $receivedResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $receivedResponse['_Destination'] = $nextProcessingEntity['Location'];
+            $receivedResponse['__']['ProtocolBinding'] = $nextProcessingEntity['Binding'];
+            $receivedResponse['__']['Return'] = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
 
             return $this->_server->getBindingsModule()->send($receivedResponse, $nextProcessingEntity);
         }
         else { // Done processing! Send off to SP
-            $response['_Destination']          = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
+            $response['_Destination'] = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
             $response['__']['ProtocolBinding'] = $_SESSION['Processing'][$response['_ID']]['OriginalBinding'];
 
             $receivedRequest = $this->_server->getReceivedRequestFromResponse($response['_InResponseTo']);
@@ -316,8 +312,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
      * @throws Exception
      * @return void
      */
-    public function idPMetadataService()
-    {
+    public function idPMetadataService() {
         $entityDescriptor = array(
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
             'md:EntityDescriptor' => array(
@@ -361,18 +356,18 @@ class Corto_Module_Services extends Corto_Module_Abstract
             '__v' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
         );
         $entityDescriptor['md:EntityDescriptor']['md:IDPSSODescriptor']['md:SingleSignOnService'] = array(
-            '_Binding'  => self::DEFAULT_REQUEST_BINDING,
+            '_Binding' => self::DEFAULT_REQUEST_BINDING,
             '_Location' => $this->_server->getCurrentEntityUrl('singleSignOnService'),
         );
 
         $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntitiesDescriptor', true);
 
         $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
-        if ($this->_server->getConfig('debug', false)  && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
+        if ($this->_server->getConfig('debug', false) && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
             $dom = new DOMDocument();
             $dom->loadXML($xml);
             if (!$dom->schemaValidate($schemaUrl)) {
-                echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($xml)).'</pre>';
+                echo '<pre>' . htmlentities(Corto_XmlToArray::formatXml($xml)) . '</pre>';
                 throw new Exception('Metadata XML doesnt validate against XSD at Oasis-open.org?!');
             }
         }
@@ -387,8 +382,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
      * @throws Exception
      * @return void
      */
-    public function sPMetadataService()
-    {
+    public function sPMetadataService() {
         $entityDescriptor = array(
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
             'md:EntityDescriptor' => array(
@@ -432,7 +426,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             '__v' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
         );
         $entityDescriptor['md:EntityDescriptor']['md:SPSSODescriptor']['md:AssertionConsumerService'] = array(
-            '_Binding'  => self::DEFAULT_RESPONSE_BINDING,
+            '_Binding' => self::DEFAULT_RESPONSE_BINDING,
             '_Location' => $this->_server->getCurrentEntityUrl('assertionConsumerService'),
             '_index' => '1',
         );
@@ -444,7 +438,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $dom = new DOMDocument();
             $dom->loadXML($xml);
             if (!$dom->schemaValidate($schemaUrl)) {
-                echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($xml)).'</pre>';
+                echo '<pre>' . htmlentities(Corto_XmlToArray::formatXml($xml)) . '</pre>';
                 throw new Exception('Metadata XML doesnt validate against XSD at Oasis-open.org?!');
             }
         }
@@ -453,8 +447,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $this->_server->sendOutput($xml);
     }
 
-    public function artifactResolutionService()
-    {
+    public function artifactResolutionService() {
         $postData = Corto_XmlToArray::xml2array(file_get_contents("php://input"));
         $artifact = $postData['SOAP-ENV:Body']['samlp:ArtifactResolve']['saml:Artifact']['__v'];
 
@@ -465,12 +458,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $element = $message['__t'];
         $artifactResponse = array(
             'samlp:ArtifactResponse' => array(
-                'xmlns:samlp'   => 'urn:oasis:names:tc:SAML:2.0:protocol',
-                'xmlns:saml'    => 'urn:oasis:names:tc:SAML:2.0:assertion',
-                'ID'            => $this->_server->getNewId(),
-                'Version'       => '2.0',
-                'IssueInstant'  => $this->_server->timeStamp(),
-                'InResponseTo'  => $postData['SOAP-ENV:Body']['samlp:ArtifactResolve']['_ID'],
+                'xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                'xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
+                'ID' => $this->_server->getNewId(),
+                'Version' => '2.0',
+                'IssueInstant' => $this->_server->timeStamp(),
+                'InResponseTo' => $postData['SOAP-ENV:Body']['samlp:ArtifactResolve']['_ID'],
 
                 'saml:Issuer' => array('__v' => $this->_server->getCurrentEntityUrl()),
                 $element => $message,
@@ -479,8 +472,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $this->_server->getBindingsModule()->_soapResponse($artifactResponse);
     }
 
-    protected function _showWayf($request, $candidateIdPs)
-    {
+    protected function _showWayf($request, $candidateIdPs) {
         // Post to the 'continueToIdp' service
         $action = $this->_server->getCurrentEntityUrl('continueToIdP');
 
@@ -490,17 +482,16 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $output = $this->_server->renderTemplate(
             'discover',
             array(
-                'action'            => $action,
-                'ID'                => $request['_ID'],
-                'idpList'           => $candidateIdPs,
-                'metaDataSP'        => $remoteEntity,
-                'remoteEntities'    => $this->_server->getRemoteEntities(),
+                'action' => $action,
+                'ID' => $request['_ID'],
+                'idpList' => $candidateIdPs,
+                'metaDataSP' => $remoteEntity,
+                'remoteEntities' => $this->_server->getRemoteEntities(),
             ));
         $this->_server->sendOutput($output);
     }
 
-    protected static function _getCertDataFromPem($pemKey)
-    {
+    protected static function _getCertDataFromPem($pemKey) {
         $lines = explode("\n", $pemKey);
         $data = '';
         foreach ($lines as $line) {
@@ -516,8 +507,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         return $data;
     }
 
-    protected function _hasStoredConsent($serviceProviderEntityId, $response, $responseAttributes)
-    {
+    protected function _hasStoredConsent($serviceProviderEntityId, $response, $responseAttributes) {
         try {
             $dbh = $this->_getConsentDatabaseConnection();
             if (!$dbh) {
@@ -554,8 +544,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         return false;
     }
 
-    protected function _storeConsent($serviceProviderEntityId, $attributes)
-    {
+    protected function _storeConsent($serviceProviderEntityId, $attributes) {
         $dbh = $this->_getConsentDatabaseConnection();
         if (!$dbh) {
             return false;
@@ -581,8 +570,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
     /**
      * @return bool|PDO
      */
-    protected function _getConsentDatabaseConnection()
-    {
+    protected function _getConsentDatabaseConnection() {
         $consentDbDsn = $this->_server->getConfig('ConsentDbDsn', false);
         if (!$consentDbDsn) {
             return false;
@@ -596,8 +584,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         return $dbh;
     }
 
-    protected function _getAttributesHash($attributes)
-    {
+    protected function _getAttributesHash($attributes) {
         $hashBase = NULL;
         if ($this->_server->getConfig('ConsentStoreValues', true)) {
             ksort($attributes);
