@@ -7,7 +7,7 @@ function demoapp()
 {
     $sharedkey = 'abrakadabra';
 
-    $corto = join("/", array_slice(split("/", 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
+    $corto = join("/", array_slice(explode("/", 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
 
     $self =  $corto . '/demo.php';
     $corto = $corto . '/index.php';
