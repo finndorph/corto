@@ -4,26 +4,26 @@
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <title>POST data</title>
     </head>
-    <body <? if ( !$trace): ?>onload="document.forms[0].submit()"<? endif; ?>>
+    <body <?php if ( !$trace): ?>onload="document.forms[0].submit()"<?php endif; ?>>
         <noscript>
             <p>
                 <strong>Note:</strong>
                 Since your browser does not support JavaScript, you must press the button below once to proceed.
             </p>
         </noscript>
-        <form method="post" action=" <?= $action ?>">
-            <input type="hidden" name="<?= $name ?>" value="<?= $message ?>" />
+        <form method="post" action=" <?php echo $action ?>">
+            <input type="hidden" name="<?php echo $name ?>" value="<?php echo $message ?>" />
 
-            <?= $xtra ?>
+            <?php echo $xtra ?>
 
             <noscript><input type="submit" value="Submit" /></noscript>
 
-            <? if ($trace): ?>
+            <?php if ($trace): ?>
             <input type="submit" value="Submit" />
             <pre>
-<?= $trace ?>
+<?php echo $trace ?>
             </pre>
-            <? endif; ?>
+            <?php endif; ?>
 
         </form>
     </body>

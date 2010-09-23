@@ -5,28 +5,28 @@
         <title>Consent</title>
     </head>
     <body>
-        <form method="post" action="<?= $action ?>">
-            <input type="hidden" name="ID" value="<?= $ID ?>" />
+        <form method="post" action="<?php echo $action ?>">
+            <input type="hidden" name="ID" value="<?php echo $ID ?>" />
             <input type="hidden" name="consent" value="yes" />
             Do you consent to the following information being sent to your Service Provider:
             <?php foreach ($attributes as $uid => $attributeValues) { ?>
             <dl style="margin-left: 60px;">
                 <dt style="font-weight: bold;">
-                    <?=$this->getAttributeName($uid, 'nl_NL')?>
+                    <?php echo $this->getAttributeName($uid, 'nl_NL')?>
                 </dt>
                 <dd>
-                    <? /** Single attribute value */ if (count($attributeValues)==1) { ?>
-                      <?=$attributeValues[0];?>
-                    <? } /** Multiple attribute values */ else { ?>
+                    <?php /** Single attribute value */ if (count($attributeValues)==1) { ?>
+                      <?php echo $attributeValues[0];?>
+                    <?php } /** Multiple attribute values */ else { ?>
                     <ul>
                     <?php foreach ($attributeValues as $value) { ?>
-                        <li><?=$value?></li>
+                        <li><?php echo $value?></li>
                     <?php } ?>
                     </ul>
-                    <? } ?>
+                    <?php } ?>
                 </dd>
             </dl>
-            <? } ?>
+            <?php } ?>
             <input type=submit value=Send>
         </form>
     </body>

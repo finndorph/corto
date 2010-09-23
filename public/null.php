@@ -145,9 +145,9 @@ $location = $response['_Destination'] . "?SAMLResponse=" . urlencode(base64_enco
 ?>
 <html>
 <body>
-<a href="<?= $location ?>">GO</a>
+<a href="<?php echo $location ?>">GO</a>
 <pre>
-<?= print_r($response, 1) ?>
+<?php print_r($response) ?>
 </pre>
 </body>
 </html>

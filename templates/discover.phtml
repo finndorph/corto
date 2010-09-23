@@ -5,12 +5,12 @@
         <title>Discover ...</title>
     </head>
     <body>
-        <form method="post" action="<?= $action ?>">
-            <input type="hidden" name="ID" value="<?= $ID ?>" />
+        <form method="post" action="<?php echo $action ?>">
+            <input type="hidden" name="ID" value="<?php echo $ID ?>" />
             <select name="idp">
-                <? foreach($idpList as $idp): ?>
-                <option value="<?= $idp ?>"><?= $idp ?></option>
-                <? endforeach ?>
+                <?php foreach($idpList as $idp): ?>
+                <option value="<?php echo $idp ?>"><?php echo $idp ?></option>
+                <?php endforeach ?>
             </select>
             <input type=submit value=Send>
         </form>
