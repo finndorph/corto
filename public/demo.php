@@ -12,7 +12,7 @@ function demoapp()
     $self =  $corto . '/demo.php';
     $corto = $corto . '/index.php';
     if (isset($_POST['doit'])) {
-        $idp = $_POST['idp'];
+        $idp = empty($_POST['idp']) ? NULL: $_POST['idp'];
         if (!$idp) {
             $idp = "sp";
         }
@@ -21,22 +21,22 @@ function demoapp()
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
             '_Destination' => "$corto/$idp/Mads",
-            '_ForceAuthn' => $_REQUEST['ForceAuthn'] ? 'true' : 'false',
-            '_IsPassive' => $_REQUEST['IsPassive'] ? 'true' : 'false',
+            '_ForceAuthn' => !empty($_REQUEST['ForceAuthn']) ? 'true' : 'false',
+            '_IsPassive' => !empty($_REQUEST['IsPassive']) ? 'true' : 'false',
             '_AssertionConsumerServiceURL' => $corto,
             '_AttributeConsumingServiceIndex' => 5,
             '_ProtocolBinding' => 'JSON-Redirect',
             'saml:Issuer' => array('__v' => $self),
         );
 
-        foreach ((array) $_REQUEST['IDPList'] as $idp) {
-            $idpList[] = array('_ProviderID' => $idp);
-        }
+        if (!empty($_REQUEST['IDPList'])) {
+    	    foreach ((array) $_REQUEST['IDPList'] as $idp) {
+                $idpList[] = array('_ProviderID' => $idp);
+                $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'] = $idpList;
+            }
+    	}
 
         $relayState = 'Dummy RelayState ...';
-        if ($idpList) {
-            $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'] = $idpList;
-        }
         #$request['samlp:Scoping']['_ProxyCount'] = 2;
         $location = $request['_Destination'];
         $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(encrypt(json_encode($request), $sharedkey))))
@@ -76,6 +76,7 @@ function render($template, $vars = array())
 
 function encrypt($cleartext, $passphrase)
 {
+#	return $cleartext;
     $key_len = mcrypt_get_key_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
     $iv_len = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
     $salt = mcrypt_create_iv(8, MCRYPT_DEV_URANDOM);
@@ -85,6 +86,7 @@ function encrypt($cleartext, $passphrase)
 
 function decrypt($ciphertext, $passphrase)
 {
+#	return $ciphertext;
     $key_len = mcrypt_get_key_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
     $iv_len = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
     $salt = substr($ciphertext, 8, 8);
