@@ -1,8 +1,10 @@
 <?php
 error_reporting(E_ALL);
 ini_set("memory_limit", "400M");
-if (empty($_SERVER['PATH_INFO'])) include 'demo.php';
 
+require '../library/corto/cortocrypto.php';
+
+if (empty($_SERVER['PATH_INFO'])) include 'demo.php';
 require '../library/Corto/ProxyServer.php';
 $server = new Corto_ProxyServer();
 

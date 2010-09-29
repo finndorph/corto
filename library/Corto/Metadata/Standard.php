@@ -58,26 +58,30 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
                     $this->_metadata[$federation] = self::merge($this->_metadata[$federation], $md);
                 }
             }
-            file_put_contents($this->_corto_metadatafile . '.tmp', "<?php\nreturn " . var_export($this->_metadata, true) . ";");
+            #file_put_contents($this->_corto_metadatafile . '.tmp', "<?php\nreturn " . var_export($this->_metadata, true) . ";");
+            file_put_contents($this->_corto_metadatafile . '.tmp', 'return ' . var_export($this->_metadata, true) . ";");
             @rename($this->_corto_metadatafile . '.tmp', $this->_corto_metadatafile);
-            file_put_contents($this->_corto_url2metadatafile . '.tmp', "<?php\nreturn " . var_export($this->prepareLookuptables(), true) . ";");
+            #file_put_contents($this->_corto_url2metadatafile . '.tmp', "<?php\nreturn " . var_export($this->prepareLookuptables(), true) . ";");
+            file_put_contents($this->_corto_url2metadatafile . '.tmp', 'return ' . var_export($this->prepareLookuptables(), true) . ";");
             @rename($this->_corto_url2metadatafile . '.tmp', $this->_corto_url2metadatafile);
         }
         /**
          * This is to allow the default metadata to be independent of the location of corto
          * Replaces _HOSTED_ with the actual location
          */
-        $this->_corto = join("/", array_slice(explode("/", 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
+        $this->_corto = join("/", array_slice(explode("/", 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
         $metadatadata = file_get_contents($this->_corto_metadatafile);
         $metadatadata = str_replace('_HOSTED_', $this->_corto, $metadatadata);
-        return include 'data:text/plain,' . $metadatadata;
+        #return include 'data:text/plain,' . $metadatadata;
+        return eval($metadatadata);
     }
 
     public function getUrl2Metadata()
     {
         $url2metadatadata = file_get_contents($this->_corto_url2metadatafile);
         $url2metadatadata = str_replace('_HOSTED_', $this->_corto, $url2metadatadata);
-        return include 'data:text/plain,' . $url2metadatadata;
+        #return include 'data:text/plain,' . $url2metadatadata;
+        return eval($url2metadatadata);
     }
 
     protected static function optimizeMetaData($rawmeta, $federation)

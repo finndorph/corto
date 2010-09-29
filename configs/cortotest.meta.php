@@ -8,7 +8,7 @@ return array(
     '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
     'md:EntityDescriptor' => array(
         array(
-            '_entityID' => '_HOSTED_/demo.php',
+            '_entityID' => '_HOSTED_/index.php',
 
             'md:SPSSODescriptor' => array(
                 array(

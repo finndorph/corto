@@ -40,7 +40,8 @@ class Corto_ProxyServer {
     protected $_modules = array();
     protected $_templateSource;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->_server = $this;
     }
 
@@ -49,7 +50,8 @@ class Corto_ProxyServer {
     /**
      * @return Corto_Module_Bindings
      */
-    public function getBindingsModule() {
+    public function getBindingsModule()
+    {
         return $this->_getModule(self::MODULE_BINDINGS);
     }
 
@@ -57,14 +59,16 @@ class Corto_ProxyServer {
      * @param Corto_Module_Bindings $bindingsInstance
      * @return Corto_ProxyServer
      */
-    public function setBindingsModule(Corto_Module_Bindings $bindingsInstance) {
+    public function setBindingsModule(Corto_Module_Bindings $bindingsInstance)
+    {
         return $this->_setModule(self::MODULE_BINDINGS, $bindingsInstance);
     }
 
     /**
      * @return Corto_Module_Services
      */
-    public function getServicesModule() {
+    public function getServicesModule()
+    {
         return $this->_getModule(self::MODULE_SERVICES);
     }
 
@@ -72,7 +76,8 @@ class Corto_ProxyServer {
      * @param Corto_Module_Services $servicesInstance
      * @return Corto_ProxyServer
      */
-    public function setServicesModule(Corto_Module_Services $servicesInstance) {
+    public function setServicesModule(Corto_Module_Services $servicesInstance)
+    {
         return $this->_setModule(self::MODULE_SERVICES, $servicesInstance);
     }
 
@@ -80,7 +85,8 @@ class Corto_ProxyServer {
      * @param string $name
      * @return Corto_Module_Abstract
      */
-    protected function _getModule($name) {
+    protected function _getModule($name)
+    {
         return $this->_modules[$name];
     }
 
@@ -89,33 +95,39 @@ class Corto_ProxyServer {
      * @param  $moduleInstance
      * @return Corto_ProxyServer
      */
-    protected function _setModule($name, Corto_Module_Abstract $moduleInstance) {
+    protected function _setModule($name, Corto_Module_Abstract $moduleInstance)
+    {
         $this->_modules[$name] = $moduleInstance;
         return $this;
     }
 
-    public function getConfig($name, $default = null) {
+    public function getConfig($name, $default = null)
+    {
         if (isset($this->_configs[$name])) {
             return $this->_configs[$name];
         }
         return $default;
     }
 
-    public function getConfigs() {
+    public function getConfigs()
+    {
         return $this->_configs;
     }
 
-    public function setConfigs($configs) {
+    public function setConfigs($configs)
+    {
         $this->_configs = $configs;
         return $this;
     }
 
-    public function setAttributeMetadata(array $attributes) {
+    public function setAttributeMetadata(array $attributes)
+    {
         $this->_attributes = $attributes;
         return $this;
     }
 
-    public function getAttributeName($uid, $ietfLanguageTag = 'en_US') {
+    public function getAttributeName($uid, $ietfLanguageTag = 'en_US')
+    {
         $name = $this->_getAttributeDataType('Name', $uid, $ietfLanguageTag);
         if (!$name) {
             $name = $uid;
@@ -123,7 +135,8 @@ class Corto_ProxyServer {
         return $name;
     }
 
-    public function getAttributeDescription($uid, $ietfLanguageTag = 'en_US') {
+    public function getAttributeDescription($uid, $ietfLanguageTag = 'en_US')
+    {
         $description = $this->_getAttributeDataType('Description', $uid, $ietfLanguageTag);
         if (!$description) {
             $description = '';
@@ -131,7 +144,8 @@ class Corto_ProxyServer {
         return $description;
     }
 
-    protected function _getAttributeDataType($type, $name, $ietfLanguageTag = 'en_US') {
+    protected function _getAttributeDataType($type, $name, $ietfLanguageTag = 'en_US')
+    {
         if (isset($this->_attributes[$name][$type][$ietfLanguageTag])) {
             return $this->_attributes[$name][$type][$ietfLanguageTag];
         }
@@ -139,15 +153,18 @@ class Corto_ProxyServer {
         return $name;
     }
 
-    public function getCurrentEntity() {
+    public function getCurrentEntity()
+    {
         return $this->_metadata['current'];
     }
 
-    public function getCurrentEntityUrl($serviceName = "", $remoteEntityId = "") {
+    public function getCurrentEntityUrl($serviceName = "", $remoteEntityId = "")
+    {
         return $this->getHostedEntityUrl(nvl($this->_metadata['current'], 'EntityCode'), $serviceName, $remoteEntityId);
     }
 
-    public function getCurrentEntitySetting($name, $default = null) {
+    public function getCurrentEntitySetting($name, $default = null)
+    {
         if (isset($this->_metadata['current'][$name])) {
             return $this->_metadata['current'][$name];
         }
@@ -155,42 +172,50 @@ class Corto_ProxyServer {
         return $default;
     }
 
-    public function selfUrl($entityid = null) {
-        return 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $this->selfPath($entityid);
+    public function selfUrl($entityid = null)
+    {
+        return 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $this->selfPath($entityid);
     }
 
-    public function selfPath($entityid = null) {
+    public function selfPath($entityid = null)
+    {
         return $_SERVER['SCRIPT_NAME'] . ($entityid ? '/' . $entityid : '');
     }
 
-    public function selfDestination() {
+    public function selfDestination()
+    {
         return self::selfUrl() . $_SERVER['PATH_INFO'];
     }
 
-    public function getHostedEntityUrl($entityCode, $serviceName = "", $remoteEntityId = "") {
+    public function getHostedEntityUrl($entityCode, $serviceName = "", $remoteEntityId = "")
+    {
         if ($serviceName == 'sPMetadataService' || $serviceName = 'idPMetadataService') $serviceName = "";
         $entityPart = $entityCode;
         if ($remoteEntityId) {
             $entityPart .= '_' . md5($remoteEntityId);
         }
-        return 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
+        return 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
                 . $_SERVER['SCRIPT_NAME'] . '/' . $entityPart . ($serviceName ? '/' : '') . $serviceName;
     }
 
-    public function getRemoteEntity($entityId) {
+    public function getRemoteEntity($entityId)
+    {
         return nvl($this->_metadata['remote'], $entityId);
     }
 
 
-    public function getRemoteEntities() {
+    public function getRemoteEntities()
+    {
         return array_intersect($this->_metadata['remote'], array($this->_metadata['current']));
     }
 
-    public function getPresetIDPs() {
+    public function getPresetIDPs()
+    {
         return $this->_metadata['current']['IDP']['corto:IDPList'];
     }
 
-    public function getAllowedIDPs() {
+    public function getAllowedIDPs()
+    {
         $res = array();
         foreach ($this->_metadata['remote'] as $id => $entity) {
             if (isset($entity['IDP']['SingleSignOnService'])) {
@@ -206,16 +231,19 @@ class Corto_ProxyServer {
         return $res;
     }
 
-    public function setUrl2meta($url2meta) {
+    public function setUrl2meta($url2meta)
+    {
 
         $this->_url2meta = $url2meta;
     }
 
-    public function setRemoteEntities($entities) {
+    public function setRemoteEntities($entities)
+    {
         $this->_metadata['federations'] = $entities;
     }
 
-    public function setTemplateSource($type, $arguments) {
+    public function setTemplateSource($type, $arguments)
+    {
         $this->_templateSource = array(
             'type' => $type,
             'arguments' => $arguments,
@@ -223,15 +251,17 @@ class Corto_ProxyServer {
         return $this;
     }
 
-    public function getTemplateSource() {
+    public function getTemplateSource()
+    {
         return $this->_templateSource;
     }
 
 //////// MAIN /////////
 
-    public function serveRequest($uri = null) {
+    public function serveRequest($uri = null)
+    {
         if (!$uri) {
-            $uri = 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
+            $uri = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
         }
         $parameters = $this->getParametersFromUrl($uri);
         $this->setCurrentEntity($parameters['EntityID'], $parameters['Federation']);
@@ -245,9 +275,10 @@ class Corto_ProxyServer {
         $this->getSessionLog()->debug("Done calling service '$serviceName'");
     }
 
-    public function getParametersFromUrl($uri) {
+    public function getParametersFromUrl($uri)
+    {
 
-        foreach ($this->_url2meta as $federation => $url2meta) {
+        foreach ((array)$this->_url2meta as $federation => $url2meta) {
             if ($remote = $this->_url2meta[$federation][$uri]) break;
         }
 
@@ -260,7 +291,8 @@ class Corto_ProxyServer {
         return $parameters;
     }
 
-    public function setCurrentEntity($entityID, $federation = null) {
+    public function setCurrentEntity($entityID, $federation = null)
+    {
         if ($federation) {
             $this->_metadata['remote'] = $this->_metadata['federations'][$federation];
         }
@@ -272,7 +304,8 @@ class Corto_ProxyServer {
 
 ////////  REQUEST HANDLING /////////
 
-    public function sendAuthenticationRequest(array $request, $idp, $scope = null) {
+    public function sendAuthenticationRequest(array $request, $idp, $scope = null)
+    {
         $originalId = $request['_ID'];
 
         if ($proxySP = nvl($this->_metadata['current']['IDP'], 'corto:ProxySP')) {
@@ -302,7 +335,8 @@ class Corto_ProxyServer {
      * @param array|null $scoping
      * @return array
      */
-    public function createEnhancedRequest($originalRequest, $idp, array $scoping = null) {
+    public function createEnhancedRequest($originalRequest, $idp, array $scoping = null)
+    {
         $remoteMetaData = $this->_metadata['remote'][$idp];
         $ourMetaDAta = $this->_metadata['current'];
         $defaultacs = $ourMetaDAta['SP']['AssertionConsumerService']['default'];
@@ -372,7 +406,8 @@ class Corto_ProxyServer {
 
 //////// RESPONSE HANDLING ////////
 
-    public function createErrorResponse($request, $errorStatus) {
+    public function createErrorResponse($request, $errorStatus)
+    {
         $response = $this->_createBaseResponse($request);
 
         $errorCodePrefix = 'urn:oasis:names:tc:SAML:2.0:status:';
@@ -387,7 +422,8 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    public function createEnhancedResponse($request, $sourceResponse) {
+    public function createEnhancedResponse($request, $sourceResponse)
+    {
         $response = $this->_createBaseResponse($request);
         if (isset($request['__']['Transparent']) &&
                 $request['__']['Transparent']) {
@@ -422,7 +458,8 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    public function createNewResponse($request, $attributes = array()) {
+    public function createNewResponse($request, $attributes = array())
+    {
         $response = $this->_createBaseResponse($request);
 
         $soon = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
@@ -498,7 +535,8 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    protected function _createBaseResponse($request) {
+    protected function _createBaseResponse($request)
+    {
         $now = $this->timeStamp();
         $response = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'samlp:Response',
@@ -558,7 +596,8 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    protected function _getRequestAssertionConsumer(array $request) {
+    protected function _getRequestAssertionConsumer(array $request)
+    {
         $acs = array();
         if (isset($request['_AssertionConsumerServiceURL'])) {
             $acs['Location'] = $request['_AssertionConsumerServiceURL'];
@@ -570,7 +609,8 @@ class Corto_ProxyServer {
         return $acs;
     }
 
-    function sendResponseToRequestIssuer($request, $response) {
+    function sendResponseToRequestIssuer($request, $response)
+    {
         $requestIssuer = $request['saml:Issuer']['__v'];
         $sp = $this->getRemoteEntity($requestIssuer);
 
@@ -587,7 +627,8 @@ class Corto_ProxyServer {
     }
 
     public
-    function getReceivedRequestFromResponse($id) {
+    function getReceivedRequestFromResponse($id)
+    {
         if (!$id || !isset($_SESSION[$id])) {
             throw new Corto_ProxyServer_Exception("Unknown id ($id) in InResponseTo attribute?!?");
         }
@@ -609,7 +650,8 @@ class Corto_ProxyServer {
 
 ////////  ATTRIBUTE FILTERING /////////
 
-    public function filterInputAssertionAttributes(&$response, $request) {
+    public function filterInputAssertionAttributes(&$response, $request)
+    {
         $hostedEntityMetaData = $this->_metadata['current'];
 
         $responseIssuer = $response['saml:Issuer']['__v'];
@@ -623,7 +665,8 @@ class Corto_ProxyServer {
         }
     }
 
-    public function filterOutputAssertionAttributes(&$response, $request) {
+    public function filterOutputAssertionAttributes(&$response, $request)
+    {
         $hostedMetaData = $this->_metadata['current'];
 
         $responseDestination = $response['__']['destinationid'];
@@ -659,62 +702,64 @@ class Corto_ProxyServer {
 
 ////////  TEMPLATE RENDERING /////////
 
-    public function renderTemplate($templateName, $vars = array(), $parentTemplates = array()) {
-            $this->getSessionLog()->debug("Rendering template '$templateName'");
-            if (!is_array($vars)) {
-                $vars = array('content' => $vars);
-            }
-
-            $templateFileName = $templateName . '.phtml';
-
-            ob_start();
-
-            $this->_renderTemplate($templateFileName, $vars);
-
-            $content = ob_get_contents();
-            ob_end_clean();
-
-            foreach ($parentTemplates as $parentTemplate) {
-                $content = $this->renderTemplate(
-                    $parentTemplate,
-                    array(
-                        'content' => $content,
-                    )
-                );
-            }
-            return $content;
+    public function renderTemplate($templateName, $vars = array(), $parentTemplates = array())
+    {
+        $this->getSessionLog()->debug("Rendering template '$templateName'");
+        if (!is_array($vars)) {
+            $vars = array('content' => $vars);
         }
 
-    protected function _renderTemplate($templateFileName, $vars) {
-            extract($vars);
+        $templateFileName = $templateName . '.phtml';
 
-            $source = $this->getTemplateSource();
-            switch ($source['type'])
-            {
-                case self::TEMPLATE_SOURCE_MEMORY:
-                    if (!isset($source['arguments'][$templateFileName])) {
-                        throw new Corto_ProxyServer_Exception("Unable to load template '$templateFileName' from memory!");
-                    }
+        ob_start();
 
-                    eval('?>' . $source['arguments'][$templateFileName] . '<?');
-                    break;
+        $this->_renderTemplate($templateFileName, $vars);
 
-                case self::TEMPLATE_SOURCE_FILESYSTEM;
-                    if (!isset($source['arguments']['FilePath'])) {
-                        throw new Corto_ProxyServer_Exception('Template path not set, unable to render templates from filesystem!');
-                    }
+        $content = ob_get_contents();
+        ob_end_clean();
 
-                    $filePath = $source['arguments']['FilePath'] . $templateFileName;
-                    if (!file_exists($filePath)) {
-                        throw new Corto_ProxyServer_Exception('Template file does not exist: ' . $filePath);
-                    }
-
-                    include($filePath);
-                    break;
-                default:
-                    throw new Corto_ProxyServer_Exception('No template source set! Please configure a template source with Corto_ProxyServer->setTemplateSource()');
-            }
+        foreach ($parentTemplates as $parentTemplate) {
+            $content = $this->renderTemplate(
+                $parentTemplate,
+                array(
+                    'content' => $content,
+                )
+            );
         }
+        return $content;
+    }
+
+    protected function _renderTemplate($templateFileName, $vars)
+    {
+        extract($vars);
+
+        $source = $this->getTemplateSource();
+        switch ($source['type'])
+        {
+            case self::TEMPLATE_SOURCE_MEMORY:
+                if (!isset($source['arguments'][$templateFileName])) {
+                    throw new Corto_ProxyServer_Exception("Unable to load template '$templateFileName' from memory!");
+                }
+
+                eval('?>' . $source['arguments'][$templateFileName] . '<?');
+                break;
+
+            case self::TEMPLATE_SOURCE_FILESYSTEM;
+                if (!isset($source['arguments']['FilePath'])) {
+                    throw new Corto_ProxyServer_Exception('Template path not set, unable to render templates from filesystem!');
+                }
+
+                $filePath = $source['arguments']['FilePath'] . $templateFileName;
+                if (!file_exists($filePath)) {
+                    throw new Corto_ProxyServer_Exception('Template file does not exist: ' . $filePath);
+                }
+
+                include($filePath);
+                break;
+            default:
+                throw new Corto_ProxyServer_Exception('No template source set! Please configure a template source with Corto_ProxyServer->setTemplateSource()');
+        }
+    }
 
 //////// I/O /////////
 
@@ -727,7 +772,8 @@ class Corto_ProxyServer {
      * @return array Raw parameters form the query string
      */
     public
-    function getRawGet() {
+    function getRawGet()
+    {
         $rawGet = array();
         foreach (explode("&", $_SERVER['QUERY_STRING']) as $parameter) {
             if (preg_match("/^(.+)=(.*)$/", $parameter, $keyAndValue)) {
@@ -738,7 +784,8 @@ class Corto_ProxyServer {
     }
 
     public
-    function redirect($location, $message) {
+    function redirect($location, $message)
+    {
         $this->getSessionLog()->debug("Redirecting to $location");
 
         if ($this->getConfig('debug', true)) {
@@ -751,12 +798,14 @@ class Corto_ProxyServer {
     }
 
     public
-    function sendHeader($name, $value) {
+    function sendHeader($name, $value)
+    {
         return header("$name: $value");
     }
 
     public
-    function sendOutput($rawOutput) {
+    function sendOutput($rawOutput)
+    {
         return print $rawOutput;
     }
 
@@ -772,25 +821,30 @@ class Corto_ProxyServer {
      * @return string
      */
     public
-    function timeStamp($deltaSeconds = 0) {
+    function timeStamp($deltaSeconds = 0)
+    {
         return gmdate('Y-m-d\TH:i:s\Z', time() + $deltaSeconds);
     }
 
     public
-    function getNewId() {
+    function getNewId()
+    {
         return sha1(uniqid(mt_rand(), true));
     }
 
     public
-    function startSession() {
+    function startSession()
+    {
         session_write_close();
-        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', true));
+//        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', true));
+        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', false));
         session_name(sha1($this->_metadata['current']['entityID']));
         session_start();
     }
 
     protected
-    function restartSession($newId, $newName) {
+    function restartSession($newId, $newName)
+    {
         session_write_close();
 
         session_id($newId);
@@ -802,7 +856,8 @@ class Corto_ProxyServer {
      * @return Corto_Log_Interface
      */
     public
-    function getSystemLog() {
+    function getSystemLog()
+    {
         if (!isset($this->_systemLog)) {
             $this->_systemLog = new Corto_Log_Dummy();
         }
@@ -811,7 +866,8 @@ class Corto_ProxyServer {
     }
 
     public
-    function getSessionLog() {
+    function getSessionLog()
+    {
         if (isset($this->_sessionLog)) {
             return $this->_sessionLog;
         }
@@ -827,12 +883,14 @@ class Corto_ProxyServer {
     }
 
     public
-    function setSystemLog(Corto_Log_Interface $log) {
+    function setSystemLog(Corto_Log_Interface $log)
+    {
         $this->_systemLog = $log;
     }
 
     public
-    function setSessionLogDefault($logDefault) {
+    function setSessionLogDefault($logDefault)
+    {
         $this->_sessionLogDefault = $logDefault;
     }
-    }
+}
