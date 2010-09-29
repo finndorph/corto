@@ -1,4 +1,4 @@
-<?
+<?php
 require '../library/corto/cortocrypto.php';
 
 function ID()
@@ -22,7 +22,7 @@ $response = array(
     '__t' => 'samlp:Response',
     '__' => array(
         'paramname' => 'SAMLResponse',
-        'RelayState' => $request['__']['RelayState'],
+        'RelayState' => !empty($request['__']['RelayState']) ? $request['__']['RelayState'] : NULL,
     ),
     '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
     '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
@@ -86,7 +86,7 @@ $response['saml:Assertion'] = array(
 #			'_SessionIndex' => ID(),
         'saml:SubjectLocality' => array(
             '_Address' => $_SERVER['REMOTE_ADDR'],
-            '_DNSName' => $_SERVER['REMOTE_HOST'],
+            '_DNSName' => !empty($_SERVER['REMOTE_HOST']) ? $_SERVER['REMOTE_HOST'] : gethostbyaddr($_SERVER['REMOTE_ADDR']),
         ),
         'saml:AuthnContext' => array(
             'saml:AuthnContextClassRef' => array('__v' => 'urn:oasis:names:tc:SAML:2.0:ac:classes:Password'),
