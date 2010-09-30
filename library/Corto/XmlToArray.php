@@ -47,7 +47,8 @@ class Corto_XmlToArray
     /**
      * @var array All XML entities which are treated as single values in Corto.
      */
-    protected static $_singulars = array(
+    protected static $_singulars;
+    protected static $_singulars_list = array(
         'md:AffiliationDescriptor',
 #        'md:AttributeAuthorityDescriptor',
 #        'md:AuthnAuthorityDescriptor',
@@ -141,7 +142,7 @@ class Corto_XmlToArray
                 'XML: ' . $xml);
         }
         xml_parser_free($parser);
-        self::$_singulars = array_fill_keys(self::$_singulars, 1);
+        self::$_singulars = array_fill_keys(self::$_singulars_list, 1);
         $return = self::_xml2array($values);
         return $return[0];
     }
@@ -156,13 +157,17 @@ class Corto_XmlToArray
      * @return array
      */
      
-    protected static $c = 0;
+    protected static $i = 0;
      
     protected static function _xml2array(&$elements, $level = 1, $namespaceMapping = array())
     {
         static $defaultNs;
+        if ($level == 1) {
+                self::$i = 0;
+                $defaultNs = '';
+        }
         $newElement = array();
-        while(isset($elements[self::$c]) && $value = $elements[self::$c++]) {
+        while(isset($elements[self::$i]) && $value = $elements[self::$i++]) {
             if ($value['type'] == 'close') {
                 return $newElement;
             } elseif ($value['type'] == 'cdata') {
