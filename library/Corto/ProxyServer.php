@@ -474,7 +474,13 @@ class Corto_ProxyServer
         $subjectConfirmation = &$response['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData'];
         $subjectConfirmation['_Recipient']    = $acs['Location'];
         $subjectConfirmation['_InResponseTo'] = $request['_ID'];
+        $subjectConfirmation['_NotBefore']    = $this->timeStamp();
+        $subjectConfirmation['_NotOnOrAfter'] = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
 
+        $response['saml:Assertion']['_ID'] = $this->getNewId();
+        $response['saml:Assertion']['_IssueInstant'] = $this->timeStamp();
+        $response['saml:Assertion']['saml:Conditions']['_NotBefore']    = $this->timeStamp();
+        $response['saml:Assertion']['saml:Conditions']['_NotOnOrAfter'] = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
         $response['saml:Assertion']['saml:Issuer'] = array('__v' => $response['saml:Issuer']['__v']);
         $response['saml:Assertion']['saml:Conditions']['saml:AudienceRestriction']['saml:Audience']['__v'] = $request['saml:Issuer']['__v'];
 
