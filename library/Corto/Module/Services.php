@@ -121,9 +121,15 @@ class Corto_Module_Services extends Corto_Module_Abstract
     public function continueToIdP()
     {
         $selectedIdp = $_REQUEST['idp'];
+        if (!$selectedIdp) {
+            throw new Corto_Module_Services_Exception('No IdP selected after WAYF?!?');
+        }
 
         // Retrieve the request from the session.
         $id      = $_POST['ID'];
+        if (!isset($_SESSION[$id]['SAMLRequest'])) {
+            throw new Corto_Module_Services_Exception('Session lost after WAYF?!?!?!');
+        }
         $request = $_SESSION[$id]['SAMLRequest'];
         
         $this->_server->sendAuthenticationRequest($request, $selectedIdp);
@@ -149,12 +155,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
         $this->_server->filterInputAssertionAttributes($receivedResponse, $receivedRequest);
 
-        // Cache the response
-        if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-            $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
-            $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
-        }
-
         $processingEntities = $this->_getReceivedResponseProcessingEntities($receivedRequest, $receivedResponse);
         if (!empty($processingEntities)) {
             $firstProcessingEntity = array_shift($processingEntities);
@@ -175,6 +175,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
             return $this->_server->getBindingsModule()->send($receivedResponse, $firstProcessingEntity);
         }
         else {
+            // Cache the response
+            if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
+                $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
+                $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
+            }
+
             $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
             return $this->_server->sendResponseToRequestIssuer($receivedRequest, $receivedResponse);
         }
@@ -304,6 +310,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
             unset($attributes['ServiceProvider']);
             $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
+
+            // Cache the response
+            if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
+                $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
+                $_SESSION['CachedResponses'][$issuerEntityId] = $response;
+            }
 
             $sentResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
             return $this->_server->sendResponseToRequestIssuer($receivedRequest, $sentResponse);
