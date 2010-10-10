@@ -11,6 +11,16 @@ return array(
         array(
             '_entityID' => '_HOSTED_/index.php',
 
+            'md:Extensions' => array(
+                'saml:Attribute' => array(
+                    array(
+                        '_Name' => 'corto:sharedkey',
+                        'saml:AttributeValue' => array(
+                            array('__v' => 'abrakadabra'),
+                        ),
+                    ),
+                ),
+            ),
             'md:SPSSODescriptor' => array(
                 array(
                     '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
@@ -23,12 +33,6 @@ return array(
                     ),
                     'md:Extensions' => array(
                         'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:sharedkey',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => 'abrakadabra'),
-                                ),
-                            ),
                             array(
                                 '_Name' => 'corto:spfilter',
                                 'saml:AttributeValue' => array(

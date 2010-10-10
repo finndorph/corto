@@ -6,9 +6,23 @@ return array(
     '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
     '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
     '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
+    '_xmlns:mdattr' => 'urn:oasis:names:tc:SAML:metadata:attribute',
     'md:EntityDescriptor' => array(
         array(
             '_entityID' => '_HOSTED_/index.php',
+
+            'md:Extensions' => array(
+                'mdattr:EntityAttributes' => array(
+                    'saml:Attribute' => array(
+                        array(
+                            '_Name' => 'corto:sharedkey',
+                            'saml:AttributeValue' => array(
+                                array('__v' => 'abrakadabra'),
+                            ),
+                        ),
+                    )
+                ),
+            ),
 
             'md:SPSSODescriptor' => array(
                 array(
@@ -28,6 +42,18 @@ return array(
         array(
             '_entityID' => '_HOSTED_/index.php/sp',
 
+            'md:Extensions' => array(
+                'mdattr:EntityAttributes' => array(
+                    'saml:Attribute' => array(
+                        array(
+                            '_Name' => 'corto:sharedkey',
+                            'saml:AttributeValue' => array(
+                                array('__v' => 'abrakadabra'),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
             'md:SPSSODescriptor' => array(
                 array(
                     '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
@@ -62,17 +88,19 @@ return array(
                 array(
                     '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                     'md:Extensions' => array(
-                        'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:IDPList',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => '_HOSTED_/index.php/idpwayf'),
+                        'mdattr:EntityAttributes' => array(
+                            'saml:Attribute' => array(
+                                array(
+                                    '_Name' => 'corto:IDPList',
+                                    'saml:AttributeValue' => array(
+                                        array('__v' => '_HOSTED_/index.php/idpwayf'),
+                                    ),
                                 ),
-                            ),
-                            array(
-                                '_Name' => 'corto:sharedkey',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => 'abrakadabra'),
+                                array(
+                                    '_Name' => 'corto:cacheResponse',
+                                    'saml:AttributeValue' => array(
+                                        array('__v' => 'true'),
+                                    ),
                                 ),
                             ),
                         ),
@@ -93,17 +121,13 @@ return array(
                 array(
                     '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                     'md:Extensions' => array(
-                        'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:IDPList',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => '_HOSTED_/index.php/idp'),
-                                ),
-                            ),
-                            array(
-                                '_Name' => 'corto:ProxySP',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => '_HOSTED_/index.php/spwayf'),
+                        'mdattr:EntityAttributes' => array(
+                            'saml:Attribute' => array(
+                                array(
+                                    '_Name' => 'corto:ProxySP',
+                                    'saml:AttributeValue' => array(
+                                        array('__v' => '_HOSTED_/index.php/spwayf'),
+                                    ),
                                 ),
                             ),
                         ),
@@ -111,12 +135,13 @@ return array(
                     'md:SingleSignOnService' => array(
                         array(
                             '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-                            '_Location' => '_HOSTED_/index.php/wayf/Niels',
+                            '_Location' => '_HOSTED_/index.php/idpwayf/Niels',
                         ),
                     ),
                 ),
             ),
         ),
+
         array(
             '_entityID' => '_HOSTED_/index.php/spwayf',
 
@@ -127,7 +152,7 @@ return array(
                     array(
                         array(
                             '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-                            '_Location' => '_HOSTED_/index.php/wayf/Hans',
+                            '_Location' => '_HOSTED_/index.php/spwayf/Hans',
                             '_index' => 1,
                         ),
                     ),
@@ -137,29 +162,21 @@ return array(
         ),
         array(
             '_entityID' => '_HOSTED_/index.php/idp',
-
             'md:Extensions' => array(
-                '_xmlns:corto' => 'corto.wayf.dk',
-                'corto:IDPList' => array(
-                    'corto:IDPEntry' => array(
-                        array('_ProviderID' => '_HOSTED_/null.php'),
-                    ),
+                'mdattr:EntityAttributes' => array(
+                    'saml:Attribute' => array(
+                        array(
+                            '_Name' => 'corto:sharedkey',
+                            'saml:AttributeValue' => array(
+                                array('__v' => 'abrakadabra'),
+                            ),
+                        ),
+                    )
                 ),
-                'corto:saml2int' => array(),
             ),
             'md:SPSSODescriptor' => array(
                 array(
                     '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
-                    'md:Extensions' => array(
-                        'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:sharedkey',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => 'abrakadabra'),
-                                ),
-                            ),
-                        ),
-                    ),
                     'md:AssertionConsumerService' =>
                     array(
                         array(
@@ -175,11 +192,13 @@ return array(
                 array(
                     '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                     'md:Extensions' => array(
-                        'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:IDPList',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => '_HOSTED_/null.php'),
+                        'mdattr:EntityAttributes' => array(
+                            'saml:Attribute' => array(
+                                array(
+                                    '_Name' => 'corto:IDPList',
+                                    'saml:AttributeValue' => array(
+                                        array('__v' => '_HOSTED_/null.php'),
+                                    ),
                                 ),
                             ),
                         ),
@@ -199,11 +218,16 @@ return array(
             '_entityID' => '_HOSTED_/null.php',
 
             'md:Extensions' => array(
-                '_xmlns:corto' => 'corto.wayf.dk',
-                'corto:flags' => array(
-                    '_sharedkey' => 'c04a2335f80812ecc739773edb7fb4fc',
-                    '_spfilter' => 'spfilter',
-                )
+                'mdattr:EntityAttributes' => array(
+                    'saml:Attribute' => array(
+                        array(
+                            '_Name' => 'corto:sharedkey',
+                            'saml:AttributeValue' => array(
+                                array('__v' => 'abrakadabra'),
+                            ),
+                        ),
+                    )
+                ),
             ),
 
 
@@ -216,21 +240,11 @@ return array(
                             '_Location' => '_HOSTED_/null.php',
                         ),
                     ),
-                    'md:Extensions' => array(
-                        'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:sharedkey',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => 'abrakadabra'),
-                                ),
-                            ),
-                        ),
-
-                    ),
                 ),
             ),
         ),
     ),
+
 );
 
 ?>
