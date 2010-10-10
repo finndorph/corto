@@ -201,16 +201,14 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
 
     protected function _receiveJSON($request, $key, $params)
     {
-        $idporsp = $params['ServiceName'] == 'SingleSignOnService' ? 'IDP' : 'SP';
         $remoteEntity = $this->_server->getRemoteEntity($params['EntityID']);
-        $passphrase = $remoteEntity[$idporsp]['corto:sharedkey'][0];
+        $passphrase = nvl2($remoteEntity, 'corto:sharedkey', 0);
         $messageArray = json_decode(decrypt(gzinflate(base64_decode(nvl($request, $key))), $passphrase), 1);
 
         $messageArray['__']['RelayState'] = nvl($request, 'RelayState');
         $messageArray['__']['paramname'] = $key;
         $messageArray['__']['Return'] = nvl($request, 'return');
         return $messageArray;
-
     }
 
     /**
@@ -637,7 +635,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $messageType = $message['__']['paramname'];
 
         $idporsp = $messageType === self::KEY_REQUEST ? 'IDP' : 'SP';
-        $encodedMessage = encrypt(json_encode($message), $remoteEntity[$idporsp]['corto:sharedkey'][0]);
+        $encodedMessage = encrypt(json_encode($message), $remoteEntity['corto:sharedkey'][0]);
 
         // Encode the message for transfer
         $encodedMessage = urlencode(base64_encode(gzdeflate($encodedMessage)));
