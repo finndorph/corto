@@ -22,26 +22,41 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
     protected $_reassemblemetadata = true;
     protected $_corto;
 
+    public function addExternalMetadataToFederation($source, $federation = '_default_')
+    {
+        $this->_metadatasources[$federation][] = array(
+            'source' => $source,
+            'type' => 'external',
+        );
+        $this->_reassemblemetadata = true;
+    }
+
     public function addMetadataToFederation($source, $federation = '_default_')
     {
         $thefile = realpath($source);
-        $this->_metadatasources[$federation][] = $thefile;
+        $pi = pathinfo(realpath($source));
+        $this->_metadatasources[$federation][] = array(
+            'source' => $thefile,
+            'type' => $pi['extension'],
+        );
         // we silently ignore non-existant files
         if ($sourcetime = @filemtime($thefile)) {
-            $metadatatime = @filemtime(realpath($this->_corto_metadata));
+            $metadatatime = @filemtime(realpath($this->_corto_metadatafile));
             $this->_reassemblemetadata = $this->_reassemblemetadata
                     || !$metadatatime
                     || ($sourcetime > $metadatatime);
         }
     }
 
-    public function getMetadata()
+    public function getMetadata($usecached = false)
     {
-        if ($this->_reassemblemetadata) {
-            foreach ($this->_metadatasources as $federation => $feds) {
-                foreach ($feds as $source) {
-                    $pi = pathinfo(realpath($source));
-                    switch ($pi['extension']) {
+        if (!$usecached && $this->_reassemblemetadata) {
+            foreach ($this->_metadatasources as $federation => $feeds) {
+                foreach ($feeds as $sourceinfo) {
+                    $source = $sourceinfo['source'];
+
+                    switch ($sourceinfo['type']) {
+                        case 'external':
                         case 'xml':
                             $metadata = Corto_XmlToArray::xml2array(file_get_contents($source));
                             break;
@@ -73,7 +88,8 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
         $metadatadata = file_get_contents($this->_corto_metadatafile);
         $metadatadata = str_replace('_HOSTED_', $this->_corto, $metadatadata);
         #return include 'data:text/plain,' . $metadatadata;
-        return eval($metadatadata);
+        $md = eval($metadatadata);
+        return $md;
     }
 
     public function getUrl2Metadata()
@@ -90,6 +106,14 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
             $cortoEntityDescriptor = array();
             $cortoEntityDescriptor['entityID'] = $entityDescriptor['_entityID'];
             $cortoEntityDescriptor['federation'] = $federation;
+
+            if (isset($entityDescriptor['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'])) {
+                foreach ((array) $entityDescriptor['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'] as $attribute) {
+                    foreach ((array) $attribute['saml:AttributeValue'] as $attributeValue) {
+                        $cortoEntityDescriptor[$attribute['_Name']][] = $attributeValue['__v'];
+                    }
+                }
+            }
 
             if (isset($entityDescriptor['md:IDPSSODescriptor']))
                 foreach ((array) $entityDescriptor['md:IDPSSODescriptor'] as $idpsso) {
@@ -127,6 +151,7 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
                 $cortoEntityDescriptor['SP']['AssertionConsumerService']['default']
                         = $default ? $default : min(array_keys($acslist));
             }
+
             foreach (self::$descriptors as $descriptor) {
                 if (isset($entityDescriptor['md:' . $descriptor . 'SSODescriptor']))
                     foreach ((array) $entityDescriptor['md:' . $descriptor . 'SSODescriptor'] as $idporsp) {
@@ -137,18 +162,20 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
 
                         }
 
-                        if (isset($idporsp['md:Extensions']['saml:Attribute']))
-                            foreach ((array) $idporsp['md:Extensions']['saml:Attribute'] as $attribute) {
+                        if (isset($idporsp['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'])) {
+                            foreach ((array) $idporsp['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'] as $attribute) {
                                 foreach ((array) $attribute['saml:AttributeValue'] as $attributeValue) {
                                     $cortoEntityDescriptor[$descriptor][$attribute['_Name']][] = $attributeValue['__v'];
                                 }
                             }
+                        }
                         if (isset($idporsp['md:KeyDescriptor']))
                             foreach ((array) $idporsp['md:KeyDescriptor'] as $keyDescriptor) {
                                 $cortoEntityDescriptor[$descriptor][$keyDescriptor['_use']]['X509Certificate'] =
                                         $keyDescriptor['ds:KeyInfo']['ds:X509Data']['ds:X509Certificate']['__v'];
-                                $cortoEntityDescriptor[$descriptor][$keyDescriptor['_use']]['KeyName'] =
-                                        $keyDescriptor['ds:KeyInfo']['ds:X509Data']['ds:KeyName']['__v'];
+                                /*                               $cortoEntityDescriptor[$descriptor][$keyDescriptor['_use']]['KeyName'] =
+                                                                       $keyDescriptor['ds:KeyInfo']['ds:X509Data']['ds:KeyName']['__v'];
+                                */
                             }
                     }
             }

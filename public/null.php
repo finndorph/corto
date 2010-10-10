@@ -1,5 +1,11 @@
 <?php
-require '../library/corto/cortocrypto.php';
+require '../library/Corto/cortocrypto.php';
+
+function nvl(&$array, $index, $default = null)
+{
+    if (isset($array[$index])) return $array[$index];
+    return $default;
+}
 
 function ID()
 {
@@ -13,7 +19,7 @@ function timeStamp($delta = 0)
 }
 
 $sharedkey = 'abrakadabra';
-$entityID = 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
+$entityID = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
 $request = json_decode(decrypt(gzinflate(base64_decode($_GET['SAMLRequest'])), $sharedkey), 1);
 $now = timeStamp();
 $soon = timeStamp(300);
@@ -95,6 +101,7 @@ $response['saml:Assertion'] = array(
 );
 
 $attributes['uid'][] = 'abc@null';
+$attributes['idp'][] = $request['saml:Issuer']['__v'];
 foreach ((array) $attributes as $name => $attr) {
     $newattr = array(
         '_Name' => $name,
