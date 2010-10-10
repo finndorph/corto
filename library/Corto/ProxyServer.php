@@ -211,7 +211,7 @@ class Corto_ProxyServer {
 
     public function getPresetIDPs()
     {
-        return $this->_metadata['current']['IDP']['corto:IDPList'];
+        return nvl3($this->_metadata, 'current', 'IDP, 'corto:IDPList');
     }
 
     public function getAllowedIDPs()
@@ -277,8 +277,7 @@ class Corto_ProxyServer {
 
     public function getParametersFromUrl($uri)
     {
-
-        foreach ((array)$this->_url2meta as $federation => $url2meta) {
+        foreach ((array) $this->_url2meta as $federation => $url2meta) {
             if ($remote = $this->_url2meta[$federation][$uri]) break;
         }
 
@@ -308,7 +307,10 @@ class Corto_ProxyServer {
     {
         $originalId = $request['_ID'];
 
-        if ($proxySP = nvl($this->_metadata['current']['IDP'], 'corto:ProxySP')) {
+        /*
+       * @todo insert RequesterID ...
+       * */
+        if (($proxySP = nvl($this->_metadata['current']['IDP'], 'corto:ProxySP')) && $proxySP[0]) {
             $request['__']['ProxyIDP'] = $this->_metadata['current']['entityID'];
             $this->_metadata['current'] = $this->_metadata['remote'][$proxySP[0]];
             $this->startSession();
@@ -340,6 +342,7 @@ class Corto_ProxyServer {
         $remoteMetaData = $this->_metadata['remote'][$idp];
         $ourMetaDAta = $this->_metadata['current'];
         $defaultacs = $ourMetaDAta['SP']['AssertionConsumerService']['default'];
+
         $request = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'samlp:AuthnRequest',
             '__' => array(
@@ -362,7 +365,6 @@ class Corto_ProxyServer {
             '_ProtocolBinding' => $ourMetaDAta['SP']['AssertionConsumerService'][$defaultacs]['Binding'],
 
             '_AttributeConsumingServiceIndex' => $originalRequest['_AttributeConsumingServiceIndex'],
-
             'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
             'ds:Signature' => '__placeholder__',
             'samlp:NameIDPolicy' => array(
@@ -371,20 +373,18 @@ class Corto_ProxyServer {
             ),
         );
 
-        if ($scoping) {
-            $scoping = (array) $scoping;
-            foreach ($scoping as $scopedIdP) {
-                $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'][] = array('_ProviderID' => $scoping);
-            }
-            return $request;
-        }
-
         // Copy original scoping rules
         if (isset($originalRequest['samlp:Scoping'])) {
             $request['samlp:Scoping'] = $originalRequest['samlp:Scoping'];
-        }
-        else {
+        } else {
             $request['samlp:Scoping'] = array();
+        }
+
+        if ($scoping) {
+            foreach ((array) $scoping as $scopedIdP) {
+                $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'][] = array('_ProviderID' => $scopedIdP);
+            }
+            #return $request;
         }
 
         // Decrease or initialize the proxycount
@@ -400,6 +400,11 @@ class Corto_ProxyServer {
             $request['samlp:Scoping']['samlp:RequesterID'] = array();
         }
         $request['samlp:Scoping']['samlp:RequesterID'][] = array('__v' => $originalRequest['saml:Issuer']['__v']);
+
+        // Add the idp as requester - if we are sending the req as another entity than the one who received it 
+        if ($proxyidp = nvl($originalRequest['__'], 'ProxyIDP')) {
+            $request['samlp:Scoping']['samlp:RequesterID'][] = array('__v' => $proxyidp);
+        }
 
         return $request;
     }
@@ -422,7 +427,7 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    public function createEnhancedResponse($request, $sourceResponse)
+    public function createEnhancedResponse($request, $sourceResponse, $proxySP = null)
     {
         $response = $this->_createBaseResponse($request);
         if (isset($request['__']['Transparent']) &&
@@ -446,10 +451,12 @@ class Corto_ProxyServer {
             $authenticatingAuthorities[] = array('__v' => $sourceResponse['saml:Issuer']['__v']);
         }
 
-        $acs = $this->_getRequestAssertionConsumer($request);
+        if ($proxySP) {
+            $authenticatingAuthorities[] = array('__v' => $proxySP);
+        }
 
         $subjectConfirmation = &$response['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData'];
-        $subjectConfirmation['_Recipient'] = $request['_AssertionConsumerServiceURL'];
+        $subjectConfirmation['_Recipient'] = $response['_Destination'];
         $subjectConfirmation['_InResponseTo'] = $request['_ID'];
 
         $response['saml:Assertion']['saml:Issuer'] = array('__v' => $response['saml:Issuer']['__v']);
@@ -487,7 +494,8 @@ class Corto_ProxyServer {
                     '_Method' => 'urn:oasis:names:tc:SAML:2.0:cm:bearer',
                     'saml:SubjectConfirmationData' => array(
                         '_NotOnOrAfter' => $soon,
-                        '_Recipient' => $request['_AssertionConsumerServiceURL'], # req issuer
+                       # @todo is this the right Recipient?
+                        '_Recipient' => $response['_Destination'], # req issuer
                         '_InResponseTo' => $request['_ID'],
                     ),
                 ),
@@ -564,7 +572,7 @@ class Corto_ProxyServer {
         $response['__']['destinationid'] = $destinationID;
         $remoteEntity = $this->getRemoteEntity($destinationID);
 
-        if ($acsUrl = $request['_AssertionConsumerServiceURL']) {
+        if ($acsUrl = nvl($request, '_AssertionConsumerServiceURL')) {
             // @todo check that the request is signed before accepting acsURLs
             // saml2int check that it is present in metadata may do for now ...
             // but we have to have a sam2int config flag to enable this in the future
@@ -576,12 +584,12 @@ class Corto_ProxyServer {
                 $response['_Destination'] = $acsUrl;
                 $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
             }
-        } elseif (isset($request['_AssertionConsumerServiceIndex'])
-                && $acsindex = $request['_AssertionConsumerServiceIndex']
+        } elseif ($acsindex = nvl($request, '_AssertionConsumerServiceIndex')
                         && isset($remoteEntity['SP']['AssertionConsumerService'][$acsindex])) {
             $acs = $remoteEntity['SP']['AssertionConsumerService'][$acsindex];
             $response['_Destination'] = $acs['Location'];
             $response['__']['ProtocolBinding'] = $acs['Binding'];
+            //@todo return error when indexed acs is not found - not the default!
         } else {
             $acsindex = $remoteEntity['SP']['AssertionConsumerService']['default'];
             $acs = $remoteEntity['SP']['AssertionConsumerService'][$acsindex];
@@ -589,24 +597,11 @@ class Corto_ProxyServer {
             $response['__']['ProtocolBinding'] = $acs['Binding'];
         }
 
-        if (!$response['_Destination']) {
+        if (!nvl($response, '_Destination')) {
             throw new Corto_ProxyServer_Exception("No (allowed) Destination in request or metadata for: $destinationID");
         }
 
         return $response;
-    }
-
-    protected function _getRequestAssertionConsumer(array $request)
-    {
-        $acs = array();
-        if (isset($request['_AssertionConsumerServiceURL'])) {
-            $acs['Location'] = $request['_AssertionConsumerServiceURL'];
-            $acs['Binding'] = $request['_ProtocolBinding'];
-        } else {
-            $remoteEntity = $this->getRemoteEntity($request['saml:Issuer']['__v']);
-            $acs = $remoteEntity['AssertionConsumerService'];
-        }
-        return $acs;
     }
 
     function sendResponseToRequestIssuer($request, $response)
@@ -626,8 +621,7 @@ class Corto_ProxyServer {
         }
     }
 
-    public
-    function getReceivedRequestFromResponse($id)
+    public function getReceivedRequestFromResponse($id)
     {
         if (!$id || !isset($_SESSION[$id])) {
             throw new Corto_ProxyServer_Exception("Unknown id ($id) in InResponseTo attribute?!?");
@@ -797,14 +791,12 @@ class Corto_ProxyServer {
 
     }
 
-    public
-    function sendHeader($name, $value)
+    public function sendHeader($name, $value)
     {
         return header("$name: $value");
     }
 
-    public
-    function sendOutput($rawOutput)
+    public function sendOutput($rawOutput)
     {
         return print $rawOutput;
     }
@@ -820,30 +812,27 @@ class Corto_ProxyServer {
      * @param int $deltaSeconds
      * @return string
      */
-    public
-    function timeStamp($deltaSeconds = 0)
+    public function timeStamp($deltaSeconds = 0)
     {
         return gmdate('Y-m-d\TH:i:s\Z', time() + $deltaSeconds);
     }
 
-    public
-    function getNewId()
+    public function getNewId()
     {
         return sha1(uniqid(mt_rand(), true));
     }
 
-    public
-    function startSession()
+    public function startSession()
     {
         session_write_close();
 //        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', true));
         session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', false));
+        // @todo include federation name - or the session name might not be unique.
         session_name(sha1($this->_metadata['current']['entityID']));
         session_start();
     }
 
-    protected
-    function restartSession($newId, $newName)
+    protected function restartSession($newId, $newName)
     {
         session_write_close();
 
@@ -855,8 +844,7 @@ class Corto_ProxyServer {
     /**
      * @return Corto_Log_Interface
      */
-    public
-    function getSystemLog()
+    public function getSystemLog()
     {
         if (!isset($this->_systemLog)) {
             $this->_systemLog = new Corto_Log_Dummy();
@@ -865,8 +853,7 @@ class Corto_ProxyServer {
         return $this->_systemLog;
     }
 
-    public
-    function getSessionLog()
+    public function getSessionLog()
     {
         if (isset($this->_sessionLog)) {
             return $this->_sessionLog;
@@ -882,14 +869,12 @@ class Corto_ProxyServer {
         return $this->_sessionLog;
     }
 
-    public
-    function setSystemLog(Corto_Log_Interface $log)
+    public function setSystemLog(Corto_Log_Interface $log)
     {
         $this->_systemLog = $log;
     }
 
-    public
-    function setSessionLogDefault($logDefault)
+    public function setSessionLogDefault($logDefault)
     {
         $this->_sessionLogDefault = $logDefault;
     }
