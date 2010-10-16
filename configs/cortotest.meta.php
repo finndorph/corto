@@ -124,6 +124,12 @@ return array(
                         'mdattr:EntityAttributes' => array(
                             'saml:Attribute' => array(
                                 array(
+                                     '_Name' => 'corto:IDPList',
+                                     'saml:AttributeValue' => array(
+                                         array('__v' => '_HOSTED_/index.php/idp'),
+                                     ),
+                                 ),
+                                array(
                                     '_Name' => 'corto:ProxySP',
                                     'saml:AttributeValue' => array(
                                         array('__v' => '_HOSTED_/index.php/spwayf'),

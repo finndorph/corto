@@ -1,5 +1,6 @@
 <?php
 
+
 require_once 'Abstract.php';
 
 class Corto_Module_Services_Exception extends Corto_ProxyServer_Exception {
@@ -10,13 +11,25 @@ class Corto_Module_Services extends Corto_Module_Abstract {
     const DEFAULT_RESPONSE_BINDING = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST';
 
     /**
+     * Catch unknow services
+     *
+     * @throws Corto_ProxyServer_Exception
+     * @param  $name
+     * @param  $arguments
+     * @return void
+     */
+    public function __call($name, array $arguments)
+    {
+        throw new Corto_ProxyServer_Exception("No Service ($name) found for: " . print_r($arguments, 1));
+    }
+
+    /**
      * Handle a Single Sign On request (Authentication Request)
      */
     public function singleSignOnService($params)
     {
         $request = $this->_server->getBindingsModule()->receiveRequest($params);
         $scopedIDPs = array();
-        $request['__']['Transparent'] = $this->_server->getCurrentEntitySetting('TransparentProxy', false);
 
         // If ForceAuthn attribute is on, then remove cached responses and cached IDPs
         // @todo remember NOT to forget earlier logins so that we can do SLO for them as well
@@ -32,12 +45,15 @@ class Corto_Module_Services extends Corto_Module_Abstract {
         }
 
         $this->_server->getSessionLog()->debug("SSO: Request contains scoped idps: " . print_r($scopedIDPs, 1));
-        // If we configured an IDPList it takes precedence to the one in the request
-        // But we still need to append it to the original list
-        // IDPList might contain only one idp!
+
+        /* If we configured an IDPList in metadata it takes precedence to the one in the request
+        *  But we still need to append it to the original list
+        *  IDPList might contain only one idp!
+        */
+
         $presetIdPs = $this->_server->getPresetIDPs();
         if ($presetIdPs) {
-            $scopedIDPs = $presetIdPs;
+            $scopedIDPs = array_merge($presetIdPs, $scopedIDPs);
             $this->_server->getSessionLog()->debug("SSO: Scoped idps found in metadata: " . print_r($scopedIDPs, 1));
         }
 
@@ -49,23 +65,29 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             $requesterIDs[] = $requesterID['__v'];
         }
 
+        // put already visited proxies (RequesterIDs) to the back of the list
+        $lowpriorityscopedIDPs = array_intersect($scopedIDPs, $requesterIDs);
         $scopedIDPs = array_diff($scopedIDPs, $requesterIDs);
+        $scopedIDPs = array_merge($scopedIDPs, $lowpriorityscopedIDPs);
 
-        // If one of the scoped IDP has a cache entry, return that
-        $cachedIDPs = array();
-        if (isset($_SESSION['CachedResponses'])) {
-            $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']);
+        $cachedIDPs = array_keys((array) nvl($_SESSION, 'CachedResponses'));
+
+        // If one of the scoped IDP has a cache entry, use that
+        if (empty($scopedIDPs)) {
+            $commonIDPs = $cachedIDPs;
+        } else {
+            $commonIDPs = array_intersect($cachedIDPs, $scopedIDPs);
         }
-
-        if ($commonIDPs = array_intersect($cachedIDPs, $scopedIDPs) || (sizeof($scopedIDPs) == 0 && $commonIDPs = $cachedIDPs)) {
+        if (!empty($commonIDPs)) {
             $this->_server->getSessionLog()->debug("SSO: Cached response found");
             $cachedResponse = $_SESSION['CachedResponses'][$commonIDPs[0]];
             $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
             return $this->_server->sendResponseToRequestIssuer($request, $response);
         }
 
-        // If the scoped proxycount = 0, respond with a ProxyCountExceeded error
-        if (isset($request['samlp:Scoping']['_ProxyCount']) && $request['samlp:Scoping']['_ProxyCount'] == 0) {
+        // If the scoped proxycount == 0, respond with a ProxyCountExceeded error
+        // @todo register path length in cached responses and use in proxyCount check ??
+        if (nvl2($request, 'samlp:Scoping', '_ProxyCount') === 0) {
             $this->_server->getSessionLog()->debug("SSO: Proxy count exceeded!");
             $response = $this->_server->createErrorResponse($request, 'ProxyCountExceeded');
             return $this->_server->sendResponseToRequestIssuer($request, $response);
@@ -75,27 +97,27 @@ class Corto_Module_Services extends Corto_Module_Abstract {
         $candidateIDPs = $this->_server->getAllowedIdps();
 
         $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
-
         // If we have scoping, filter out every non-scoped IdP
-        $candidateIDPs = sizeof($scopedIDPs) > 0 ? array_intersect($scopedIDPs, $candidateIDPs) : $candidateIDPs;
+        $candidateIDPs = empty($scopedIDPs) ? $candidateIDPs : array_intersect($scopedIDPs, $candidateIDPs);
+
         $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
 
-        // 1+ candidate found, send authentication request to the first one
-        if (count($candidateIDPs) >= 1) {
+        // 1+ candidate found and 1+ in scoped, send authentication request to the first one
+        if (!empty($candidateIDPs) && !empty($scopedIDPs)) {
             $idp = array_shift($candidateIDPs);
-            $this->_server->getSessionLog()->debug("SSO: Only 1 candidate IdP: $idp");
+            $this->_server->getSessionLog()->debug("SSO: candidate IdP: $idp");
             return $this->_server->sendAuthenticationRequest($request, $idp, $presetIdPs);
         }
 
         // No IdPs found! Send an error response back.
-        if (count($candidateIDPs) === 0) {
+        if (empty($candidateIDPs)) {
             $this->_server->getSessionLog()->debug("SSO: No Supported Idps!");
             $response = $this->_server->createErrorResponse($request, 'NoSupportedIDP');
             return $this->_server->sendResponseToRequestIssuer($request, $response);
         }
 
-        // > 1 IdPs found, but isPassive attribute given, unable to continue
-        if (isset($request['_IsPassive']) && $request['_IsPassive'] === 'true') {
+        // 1+ non-scoped IdPs found, but isPassive attribute given, unable to continue
+        if (nvl($request, '_IsPassive')) {
             $this->_server->getSessionLog()->debug("SSO: IsPassive with multiple IdPs!");
             $response = $this->_server->createErrorResponse($request, 'NoPassive');
             return $this->_server->sendResponseToRequestIssuer($request, $response);
@@ -111,22 +133,6 @@ class Corto_Module_Services extends Corto_Module_Abstract {
     }
 
     /**
-     * Handle the forwarding of the user to the proper IdP after the WAYF screen.
-     *
-     * @return void
-     */
-    public function continueToIdP()
-    {
-        $selectedIdp = $_REQUEST['idp'];
-
-        // Retrieve the request from the session.
-        $id = $_POST['ID'];
-        $request = $_SESSION[$id]['SAMLRequest'];
-
-        $this->_server->sendAuthenticationRequest($request, $selectedIdp);
-    }
-
-    /**
      * Receive the assertion from the IdP and send it on to the SP.
      *
      * @throws Corto_Module_Services_Exception
@@ -134,71 +140,45 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      */
     public function assertionConsumerService($params)
     {
-        $receivedResponse = $this->_server->getBindingsModule()->receiveResponse($params);
+        if (handlefilters()) {
+            $receivedResponse = $this->_server->getBindingsModule()->receiveResponse($params);
 
-        // Get the ID of the Corto Request message
-        if (!$receivedResponse['_InResponseTo']) {
-            $message = "Unsollicited assertion (no InResponseTo in message) not supported!";
-            throw new Corto_Module_Services_Exception($message);
+            // Get the ID of the Corto Request message
+            if (!$receivedResponse['_InResponseTo']) {
+                $message = "Unsollicited assertion (no InResponseTo in message) not supported!";
+                throw new Corto_Module_Services_Exception($message);
+            }
+
+            $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
+            $data = get_defined_vars();
         }
 
-        $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
-        $proxySP = null;
-        // @todo filtering and processing should be done on both the sp- and the idpside
-        // @todo cross federation bridging NOT - we can't guarantee the uniqueness of entityid's !!!
-        if ($proxyIDP = nvl($receivedRequest['__'], 'ProxyIDP')) {
-            $proxySP = $params['EntityID'];
-            $this->_server->setCurrentEntity($proxyIDP);
-            $this->_server->startSession();
-        }
+        // SP side filters
+        if (handlefilters("responsein", $data, array(array('php' => 'DemoFilterClass::demofilter')))) {
+            extract($data); unset($data);
 
-        $this->_server->filterInputAssertionAttributes($receivedResponse, $receivedRequest);
+            $proxySP = null;
+            // @todo cross federation bridging NOT - we can't guarantee the uniqueness of entityid's !!!
+            if ($proxyIDP = nvl($receivedRequest['__'], 'ProxyIDP')) {
+                $proxySP = $params['EntityID'];
+                $this->_server->setCurrentEntity($proxyIDP);
+                $this->_server->startSession();
+            }
+            // Cache the response
+            if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
+                $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
+                $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
+            }
 
-        // Cache the response
-        if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-            $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
-            $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
-        }
-
-        $processingEntities = $this->_getReceivedResponseProcessingEntities($receivedRequest, $receivedResponse);
-        if (!empty($processingEntities)) {
-            $firstProcessingEntity = array_shift($processingEntities);
-            $_SESSION['Processing'][$receivedResponse['_ID']]['RemainingEntities'] = $processingEntities;
-            $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalDestination'] = $receivedResponse['_Destination'];
-            $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding'] = $receivedResponse['__']['ProtocolBinding'];
-
-            // Change the destiny of the received response
-            $receivedResponse['_Destination'] = $firstProcessingEntity['Location'];
-            $receivedResponse['__']['ProtocolBinding'] = $firstProcessingEntity['Binding'];
-            $receivedResponse['__']['Return'] = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
-
-            // @todo protocol ?
-            $responseAssertionAttributes = &$receivedResponse['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
-            $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
-            $attributes['ServiceProvider'] = array($receivedRequest['saml:Issuer']['__v']);
-            $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
-
-            return $this->_server->getBindingsModule()->send($receivedResponse, $firstProcessingEntity);
-        }
-        else {
-            // if $receivedRequest['originalIDP'] change current to that 
             $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse, $proxySP);
+            $data = get_defined_vars();
+        }
+
+        // IDP side filters
+        if (handlefilters("responseout", $data, array(array('php' => 'DemoFilterClass::demofilter')))) {
+            extract($data);
             return $this->_server->sendResponseToRequestIssuer($receivedRequest, $receivedResponse);
         }
-    }
-
-    protected function _getReceivedResponseProcessingEntities(array $receivedRequest, array $receivedResponse)
-    {
-        $currentEntityProcessing = $this->_server->getCurrentEntitySetting('Processing', array());
-
-        $remoteEntity = $this->_server->getRemoteEntity($receivedRequest['saml:Issuer']['__v']);
-
-        $processing = $currentEntityProcessing;
-        if (isset($remoteEntity['Processing'])) {
-            $processing += $remoteEntity['Processing'];
-        }
-
-        return $processing;
     }
 
     /**
@@ -281,41 +261,6 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             $response,
             $this->_server->getRemoteEntity($serviceProviderEntityId)
         );
-    }
-
-    /**
-     *
-     * @return void
-     */
-    public function processedAssertionConsumerService()
-    {
-        $response = $this->_server->getBindingsModule()->receiveResponse();
-        $remainingProcessingEntities = &$_SESSION['Processing'][$response['_ID']]['RemainingEntities'];
-
-        if (!empty($remainingProcessingEntities)) { // Moar processing!
-            $nextProcessingEntity = array_shift($remainingProcessingEntities);
-
-            // Change the destiny of the received response
-            $receivedResponse['_Destination'] = $nextProcessingEntity['Location'];
-            $receivedResponse['__']['ProtocolBinding'] = $nextProcessingEntity['Binding'];
-            $receivedResponse['__']['Return'] = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
-
-            return $this->_server->getBindingsModule()->send($receivedResponse, $nextProcessingEntity);
-        }
-        else { // Done processing! Send off to SP
-            $response['_Destination'] = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
-            $response['__']['ProtocolBinding'] = $_SESSION['Processing'][$response['_ID']]['OriginalBinding'];
-
-            $receivedRequest = $this->_server->getReceivedRequestFromResponse($response['_InResponseTo']);
-
-            $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
-            $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
-            unset($attributes['ServiceProvider']);
-            $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
-
-            $sentResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
-            return $this->_server->sendResponseToRequestIssuer($receivedRequest, $sentResponse);
-        }
     }
 
     /**

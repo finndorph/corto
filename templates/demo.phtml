@@ -1,140 +1,56 @@
 <html>
-    <head>
-        <style type="text/css" title="text/css">
+<head>
+    <style type="text/css" title="text/css">
         <!--
-        body
-        {
+        body {
             margin: 1em;
             width: 50em;
         }
-		tt {
-			color: #7BB84A;
-			font-size: inherited;
-			font-family: inherited;
-		}
--->
-        </style>
-    </head>
-    <body>
-        <img alt="" src="images/corto_logo.png" width="100" /><br />
-        <p>Welcome to the c<tt>o</tt>rto demopage.<p>Here you can play with the default identity- and serviceproviders distributed with corto:
-        <ul>
-        <li>'app' - an application 'provider' - this page
-        <li>'sp' - a service provider
-        <li>'wayf' - a proxy
-        <li>'idp' - an identity provider
-        <li>'auth' - an authentication provider.
-        </ul>In corto an authentication provider is scaled down
-        identity provider and an application provider is a scaled down service provider
-        which both only speaks 'SAML' in a json encoding of corto's 'internal' ordered map (ie. php array) representation of SAML entities.
-        <p>By pressing the "Demo" button a saml/json request will be sent to the sp, which sends it as real saml/xml to 'wayf', which sends it as saml/xml to 'idp',
-        which finally sends it as saml/json to 'null' where you get the chance to press an 'OK' button to start sending a response back. The saml request will be 
-        displayed
-        at 'null' in print_r format. When the response get back to
-        'app' it will also be displayed on this page in print_r format.
-       <form method=POST action="<?php echo $action ?>">
-        	<input type=hidden name=doit value=1>
-            <select name="proxied">
-                <option value="<?= $self ?>/saml2.wayf.ihk.dk/sso">saml2.wayf.ihk.dk</option>
-                <option value="<?= $self ?>/simplesaml.auth.dsl.dk/sso">simplesaml.auth.dsl.dk</option>
-                <option value="<?= $self ?>/ku.betahosted.wayf.dk/sso">ku.betahosted.wayf.dk</option>
-                <option value="<?= $self ?>/simplesaml.hydra.itu.dk/sso">simplesaml.hydra.itu.dk</option>
-                <option value="<?= $self ?>/sb.idp.statsbiblioteket.dk/sso">sb.idp.statsbiblioteket.dk</option>
-                <option value="<?= $self ?>/nemlogin.wayf.dk/sso">nemlogin.wayf.dk</option>
-                <option value="<?= $self ?>/orphanage.wayf.dk/sso">orphanage.wayf.dk</option>
-                <option value="<?= $self ?>/saml.ovalo.cbs.dk/sso">saml.ovalo.cbs.dk</option>
-                <option value="<?= $self ?>/simplesaml.secure.ucsyd.dk/sso">simplesaml.secure.ucsyd.dk</option>
-                <option value="<?= $self ?>/saml2.simpelsaml.natmus.dk/sso">saml2.simpelsaml.natmus.dk</option>
-                <option value="<?= $self ?>/saml2.sso.drlund-gym.dk/sso">saml2.sso.drlund-gym.dk</option>
-                <option value="<?= $self ?>/wayf.sso.sdu.dk/sso">wayf.sso.sdu.dk</option>
-                <option value="<?= $self ?>/simplesaml.sso.ucl.dk/sso">simplesaml.sso.ucl.dk</option>
-                <option value="<?= $self ?>/saml2.sso.ucn.dk/sso">saml2.sso.ucn.dk</option>
-                <option value="<?= $self ?>/idp.sso.ucsj.dk:443/sso">idp.sso.ucsj.dk:443</option>
-                <option value="<?= $self ?>/simplesaml.ssoproxy2.emu.dk/sso">simplesaml.ssoproxy2.emu.dk</option>
-                <option value="<?= $self ?>/simplesaml-eaa.wayf.akademiaarhus.dk/sso">simplesaml-eaa.wayf.akademiaarhus.dk</option>
-                <option value="<?= $self ?>/wayf.au.dk/sso">wayf.au.dk</option>
-                <option value="<?= $self ?>/cphwest.wayf.cphwest.dk/sso">cphwest.wayf.cphwest.dk</option>
-                <option value="<?= $self ?>/kea.wayf.cphwest.dk/sso">kea.wayf.cphwest.dk</option>
-                <option value="<?= $self ?>/sosuc.wayf.cphwest.dk/sso">sosuc.wayf.cphwest.dk</option>
-                <option value="<?= $self ?>/ar.wayf.gymund.dk/sso">ar.wayf.gymund.dk</option>
-                <option value="<?= $self ?>/gg.wayf.gymund.dk/sso">gg.wayf.gymund.dk</option>
-                <option value="<?= $self ?>/hg.wayf.gymund.dk/sso">hg.wayf.gymund.dk</option>
-                <option value="<?= $self ?>/kg.wayf.gymund.dk/sso">kg.wayf.gymund.dk</option>
-                <option value="<?= $self ?>/rk.wayf.gymund.dk/sso">rk.wayf.gymund.dk</option>
-                <option value="<?= $self ?>/sg.wayf.gymund.dk/sso">sg.wayf.gymund.dk</option>
-                <option value="<?= $self ?>/simplesaml.wayf.hi.is/sso">simplesaml.wayf.hi.is</option>
-                <option value="<?= $self ?>/simplesaml.wayf.ibc.dk/sso">simplesaml.wayf.ibc.dk</option>
-                <option value="<?= $self ?>/simplesaml.wayf.iha.dk/sso">simplesaml.wayf.iha.dk</option>
-                <option value="<?= $self ?>/ags.wayf.itcfyn.dk/sso">ags.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/bornholm-gym.wayf.itcfyn.dk/sso">bornholm-gym.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/fagy.wayf.itcfyn.dk/sso">fagy.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/frg.wayf.itcfyn.dk/sso">frg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/humanica.wayf.itcfyn.dk/sso">humanica.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/kg.wayf.itcfyn.dk/sso">kg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/maribo.wayf.itcfyn.dk/sso">maribo.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/middelfart.wayf.itcfyn.dk/sso">middelfart.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/mulernes.wayf.itcfyn.dk/sso">mulernes.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/munkensdam.wayf.itcfyn.dk/sso">munkensdam.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/nakskov.wayf.itcfyn.dk/sso">nakskov.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/nordfyns.wayf.itcfyn.dk/sso">nordfyns.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/norreg.wayf.itcfyn.dk/sso">norreg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/nyborg.wayf.itcfyn.dk/sso">nyborg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/odensekatedralskole.wayf.itcfyn.dk/sso">odensekatedralskole.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/ribek.wayf.itcfyn.dk/sso">ribek.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/ringe.wayf.itcfyn.dk/sso">ringe.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/sctknud.wayf.itcfyn.dk/sso">sctknud.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/sosufh.wayf.itcfyn.dk/sso">sosufh.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/sosufyn.wayf.itcfyn.dk/sso">sosufyn.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/sosusyd.wayf.itcfyn.dk/sso">sosusyd.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/svendborgg.wayf.itcfyn.dk/sso">svendborgg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/tornbjerg.wayf.itcfyn.dk/sso">tornbjerg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/tornby.wayf.itcfyn.dk/sso">tornby.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/vestfynsg.wayf.itcfyn.dk/sso">vestfynsg.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/vuc-bornholm.wayf.itcfyn.dk/sso">vuc-bornholm.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/vucfyn.wayf.itcfyn.dk/sso">vucfyn.wayf.itcfyn.dk</option>
-                <option value="<?= $self ?>/saml2.wayf.itu.dk/sso">saml2.wayf.itu.dk</option>
-                <option value="<?= $self ?>/login.wayf.kb.dk/sso">login.wayf.kb.dk</option>
-                <option value="<?= $self ?>/stafflogin.wayf.kb.dk/sso">stafflogin.wayf.kb.dk</option>
-                <option value="<?= $self ?>/saml2.wayf.phmetropol.dk/sso">saml2.wayf.phmetropol.dk</option>
-                <option value="<?= $self ?>/simplesaml.wayf.phmetropol.dk/sso">simplesaml.wayf.phmetropol.dk</option>
-                <option value="<?= $self ?>/saml2.wayf.regionsjaelland.dk/sso">saml2.wayf.regionsjaelland.dk</option>
-                <option value="<?= $self ?>/idp.wayf.ruc.dk/sso">idp.wayf.ruc.dk</option>
-                <option value="<?= $self ?>/saml2.wayf.rungsted-gym.dk/sso">saml2.wayf.rungsted-gym.dk</option>
-                <option value="<?= $self ?>/aa.wayf.supportcenter.dk/sso">aa.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/aip.wayf.supportcenter.dk/sso">aip.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/ak.wayf.supportcenter.dk/sso">ak.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/akat.wayf.supportcenter.dk/sso">akat.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/asg.wayf.supportcenter.dk/sso">asg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/eg.wayf.supportcenter.dk/sso">eg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/gg.wayf.supportcenter.dk/sso">gg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/its.wayf.supportcenter.dk/sso">its.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/lg.wayf.supportcenter.dk/sso">lg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/mg.wayf.supportcenter.dk/sso">mg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/og.wayf.supportcenter.dk/sso">og.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/ra.wayf.supportcenter.dk/sso">ra.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/rs.wayf.supportcenter.dk/sso">rs.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/sg.wayf.supportcenter.dk/sso">sg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/sgy.wayf.supportcenter.dk/sso">sgy.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/sosur.wayf.supportcenter.dk/sso">sosur.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/sska.wayf.supportcenter.dk/sso">sska.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/sss.wayf.supportcenter.dk/sso">sss.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/stv.wayf.supportcenter.dk/sso">stv.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/udc.wayf.supportcenter.dk/sso">udc.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/vd.wayf.supportcenter.dk/sso">vd.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/vhg.wayf.supportcenter.dk/sso">vhg.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/via.wayf.supportcenter.dk/sso">via.wayf.supportcenter.dk</option>
-                <option value="<?= $self ?>/simplesaml.wayf.tietgen.dk/sso">simplesaml.wayf.tietgen.dk</option>
-                <option value="<?= $self ?>/saml2.wayf.ucc.dk/sso">saml2.wayf.ucc.dk</option>
-                <option value="<?= $self ?>/simplesaml.wayf.viauc.dk/sso">simplesaml.wayf.viauc.dk</option>
-           </select>
-            <input type=submit value="Demo">
-        </form>
 
-        <p>
-       <?php echo $message ?>
-       </p>
+        tt {
+            color: #7BB84A;
+            font-size: inherited;
+            font-family: inherited;
+        }
+
+        -->
+    </style>
+</head>
+<body>
+<img alt="" src="images/corto_logo.png" width="100"/><br/>
+
+<p>Welcome to the c<tt>o</tt>rto demopage.
+
+<p>Here you can play with the default identity- and serviceproviders distributed with corto:
+<ul>
+    <li>'app' - an application 'provider' - this page
+    <li>'sp' - a service provider
+    <li>'wayf' - a proxy
+    <li>'idp' - an identity provider
+    <li>'auth' - an authentication provider.
+</ul>
+In corto an authentication provider is scaled down
+identity provider and an application provider is a scaled down service provider
+which both only speaks 'SAML' in a json encoding of corto's 'internal' ordered map (ie. php array) representation of
+SAML entities.
+<p>By pressing the "Demo" button a saml/json request will be sent to the sp, which sends it as real saml/xml to 'wayf',
+    which sends it as saml/xml to 'idp',
+    which finally sends it as saml/json to 'null' where you get the chance to press an 'OK' button to start sending a
+    response back. The saml request will be
+    displayed
+    at 'null' in print_r format. When the response get back to
+    'app' it will also be displayed on this page in print_r format.
+
+<form method=POST action="<?php echo $action ?>">
+    <input type=hidden name=doit value=1>
+    <input type=submit value="Demo">
+</form>
+
+<p>
+<?php echo $message ?>
+</p>
          <pre>
         <?php echo preg_replace("/\n\n/", "\n", preg_replace("/Array\n\s+/", "Array ", htmlspecialchars(print_r($SAMLResponse, 1)))); ?>
         </pre>
-    </body>
+</body>
 </html>

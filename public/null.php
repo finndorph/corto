@@ -1,22 +1,6 @@
 <?php
-require '../library/Corto/cortocrypto.php';
+require '../library/Corto/cortolib.php';
 
-function nvl(&$array, $index, $default = null)
-{
-    if (isset($array[$index])) return $array[$index];
-    return $default;
-}
-
-function ID()
-{
-    return sha1(uniqid(mt_rand(), true));
-}
-
-;
-function timeStamp($delta = 0)
-{
-    return gmdate('Y-m-d\TH:i:s\Z', time() + $delta);
-}
 
 $sharedkey = 'abrakadabra';
 $entityID = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
@@ -117,7 +101,7 @@ foreach ((array) $attributes as $name => $attr) {
 }
 
 
-$response['saml:Assertion']['saml:AttributeStatement']['saml:Attribute'] = $res;
+$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'] = $res;
 
 $location = $response['_Destination'] . "?SAMLResponse=" . urlencode(base64_encode(gzdeflate(encrypt(json_encode($response), $sharedkey))));
 ?>

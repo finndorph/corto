@@ -48,9 +48,9 @@ class Corto_Metadata_Standard implements Corto_Metadata_Interface {
         }
     }
 
-    public function getMetadata($usecached = false)
+    public function getMetadata($forcereassembly = true)
     {
-        if (!$usecached && $this->_reassemblemetadata) {
+        if ($forcereassembly || $this->_reassemblemetadata) {
             foreach ($this->_metadatasources as $federation => $feeds) {
                 foreach ($feeds as $sourceinfo) {
                     $source = $sourceinfo['source'];

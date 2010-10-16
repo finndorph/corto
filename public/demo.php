@@ -20,7 +20,7 @@ function demoapp()
             '_ID' => sha1(uniqid(mt_rand(), true)),
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
-            '_Destination' => $_REQUEST['proxied'], #"$corto/$idp/Mads",
+            '_Destination' => "$corto/$idp/Mads", #"$corto/$idp/Mads",
             '_ForceAuthn' => !empty($_REQUEST['ForceAuthn']) ? 'true' : 'false',
             '_IsPassive' => !empty($_REQUEST['IsPassive']) ? 'true' : 'false',
 #            '_AssertionConsumerServiceURL' => $corto,

@@ -4,7 +4,6 @@
  *
  */
 require 'XmlToArray.php';
-require 'Log/Dummy.php';
 
 class Corto_ProxyServer_Exception extends Exception {
 }
@@ -120,40 +119,7 @@ class Corto_ProxyServer {
         return $this;
     }
 
-    public function setAttributeMetadata(array $attributes)
-    {
-        $this->_attributes = $attributes;
-        return $this;
-    }
-
-    public function getAttributeName($uid, $ietfLanguageTag = 'en_US')
-    {
-        $name = $this->_getAttributeDataType('Name', $uid, $ietfLanguageTag);
-        if (!$name) {
-            $name = $uid;
-        }
-        return $name;
-    }
-
-    public function getAttributeDescription($uid, $ietfLanguageTag = 'en_US')
-    {
-        $description = $this->_getAttributeDataType('Description', $uid, $ietfLanguageTag);
-        if (!$description) {
-            $description = '';
-        }
-        return $description;
-    }
-
-    protected function _getAttributeDataType($type, $name, $ietfLanguageTag = 'en_US')
-    {
-        if (isset($this->_attributes[$name][$type][$ietfLanguageTag])) {
-            return $this->_attributes[$name][$type][$ietfLanguageTag];
-        }
-        // @todo warn the system! requested a unkown UID or langauge...
-        return $name;
-    }
-
-    public function getCurrentEntity()
+   public function getCurrentEntity()
     {
         return $this->_metadata['current'];
     }
@@ -203,7 +169,6 @@ class Corto_ProxyServer {
         return nvl($this->_metadata['remote'], $entityId);
     }
 
-
     public function getRemoteEntities()
     {
         return array_intersect($this->_metadata['remote'], array($this->_metadata['current']));
@@ -211,7 +176,7 @@ class Corto_ProxyServer {
 
     public function getPresetIDPs()
     {
-        return nvl3($this->_metadata, 'current', 'IDP, 'corto:IDPList');
+        return nvl3($this->_metadata, 'current', 'IDP', 'corto:IDPList');
     }
 
     public function getAllowedIDPs()
@@ -223,17 +188,18 @@ class Corto_ProxyServer {
                 $res[] = $entity['entityID'];
             }
         }
-        if (is_array(nvl($this->_metadata['current']['SP'], 'corto:allowedIDPs'))) {
-            $res = array_intersect($res, $this->_metadata['current']['SP']['corto:allowedIDPs']);
-        } elseif (is_array(nvl($this->_metadata['current']['SP'], 'corto:deniedIDPs'))) {
-            $res = array_diff($res, $this->_metadata['current']['SP']['corto:deniedIDPs']);
+        if ($allowedIDPs = nvl2($this->_metadata['current'], 'SP', 'corto:allowedIDPs')) {
+            $res = array_intersect($res, $allowedIDPs);
+        }
+        if ($deniedIDPs = nvl2($this->_metadata['current'], 'SP', 'corto:deniedIDPs')) {
+            $res = array_diff($res, $deniedIDPs);
         }
         return $res;
     }
 
+
     public function setUrl2meta($url2meta)
     {
-
         $this->_url2meta = $url2meta;
     }
 
@@ -257,11 +223,20 @@ class Corto_ProxyServer {
     }
 
 //////// MAIN /////////
-
+    /**
+     * Main method for handling all requests to the ProxyServer
+     *
+     * @param  $uri
+     * @return void
+     */
     public function serveRequest($uri = null)
     {
+        /*
+        * non null $uri is used for the INTERNAL binding
+        */
         if (!$uri) {
-            $uri = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
+            $uri = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
+                    . $_SERVER['PHP_SELF'];
         }
         $parameters = $this->getParametersFromUrl($uri);
         $this->setCurrentEntity($parameters['EntityID'], $parameters['Federation']);
@@ -269,47 +244,65 @@ class Corto_ProxyServer {
         $this->startSession();
         $this->getSessionLog()->debug("Started request with $uri, resulting in parameters: " . var_export($parameters, true));
 
-        $serviceName = $parameters['ServiceName'];
+        $serviceName = $parameters['Service'];
         $this->getSessionLog()->debug("Calling service '$serviceName'");
         $this->getServicesModule()->$serviceName($parameters);
         $this->getSessionLog()->debug("Done calling service '$serviceName'");
     }
 
+    /**
+     * Search through the federations and lookup the parameters for the targeted entity
+     *
+     * @param  $uri the full service uri
+     * @return array with EntityID, Service and Binding
+     */
     public function getParametersFromUrl($uri)
     {
         foreach ((array) $this->_url2meta as $federation => $url2meta) {
-            if ($remote = $this->_url2meta[$federation][$uri]) break;
+            if ($remote = $url2meta[$uri]) break;
         }
 
-        $parameters = array(
-            'Federation' => $federation,
-            'EntityID' => $remote['EntityID'],
-            'ServiceName' => $remote['Service'],
-            'Binding' => $remote['Binding'],
-        );
-        return $parameters;
+        if (!isset($remote)) {
+            throw new Corto_ProxyServer_Exception("No entity found for url: $uri");
+        }
+
+        $remote['Federation'] = $federation;
+
+        return $remote;
     }
 
+    /**
+     * Set the current metadata
+     * remote is the known remote entities
+     * current is the metadata for the current entity
+     *
+     * @param  $entityID
+     * @param  $federation if null stay in the current federation
+     */
     public function setCurrentEntity($entityID, $federation = null)
     {
         if ($federation) {
             $this->_metadata['remote'] = $this->_metadata['federations'][$federation];
         }
-
         $this->_metadata['current'] = $this->_metadata['remote'][$entityID];
-
-        return $this;
     }
 
 ////////  REQUEST HANDLING /////////
 
+    /**
+     * Send a (proxied) authenticationrequest, optionally use the corto:ProxySP as the
+     * issuer. Store both the original request and the new in the session. Let the new
+     * point to the old
+     *
+     * @param  $request
+     * @param  $idp
+     * @param  $scope
+     * @return void
+     */
     public function sendAuthenticationRequest(array $request, $idp, $scope = null)
     {
         $originalId = $request['_ID'];
 
-        /*
-       * @todo insert RequesterID ...
-       * */
         if (($proxySP = nvl($this->_metadata['current']['IDP'], 'corto:ProxySP')) && $proxySP[0]) {
             $request['__']['ProxyIDP'] = $this->_metadata['current']['entityID'];
             $this->_metadata['current'] = $this->_metadata['remote'][$proxySP[0]];
@@ -401,7 +394,7 @@ class Corto_ProxyServer {
         }
         $request['samlp:Scoping']['samlp:RequesterID'][] = array('__v' => $originalRequest['saml:Issuer']['__v']);
 
-        // Add the idp as requester - if we are sending the req as another entity than the one who received it 
+        // Add the idp as requester - if we are sending the req as another entity than the one who received it
         if ($proxyidp = nvl($originalRequest['__'], 'ProxyIDP')) {
             $request['samlp:Scoping']['samlp:RequesterID'][] = array('__v' => $proxyidp);
         }
@@ -494,7 +487,7 @@ class Corto_ProxyServer {
                     '_Method' => 'urn:oasis:names:tc:SAML:2.0:cm:bearer',
                     'saml:SubjectConfirmationData' => array(
                         '_NotOnOrAfter' => $soon,
-                       # @todo is this the right Recipient?
+                        # @todo is this the right Recipient?
                         '_Recipient' => $response['_Destination'], # req issuer
                         '_InResponseTo' => $request['_ID'],
                     ),
@@ -585,7 +578,7 @@ class Corto_ProxyServer {
                 $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
             }
         } elseif ($acsindex = nvl($request, '_AssertionConsumerServiceIndex')
-                        && isset($remoteEntity['SP']['AssertionConsumerService'][$acsindex])) {
+                && isset($remoteEntity['SP']['AssertionConsumerService'][$acsindex])) {
             $acs = $remoteEntity['SP']['AssertionConsumerService'][$acsindex];
             $response['_Destination'] = $acs['Location'];
             $response['__']['ProtocolBinding'] = $acs['Binding'];
@@ -765,8 +758,7 @@ class Corto_ProxyServer {
      *
      * @return array Raw parameters form the query string
      */
-    public
-    function getRawGet()
+    public function getRawGet()
     {
         $rawGet = array();
         foreach (explode("&", $_SERVER['QUERY_STRING']) as $parameter) {
@@ -777,8 +769,7 @@ class Corto_ProxyServer {
         return $rawGet;
     }
 
-    public
-    function redirect($location, $message)
+    public function redirect($location, $message)
     {
         $this->getSessionLog()->debug("Redirecting to $location");
 
@@ -822,13 +813,23 @@ class Corto_ProxyServer {
         return sha1(uniqid(mt_rand(), true));
     }
 
+    /**
+     * Initialize corto session - to be able to handle multiple federations
+     * and entities the session name is a hash of entityID concatenated with the federation name
+     *
+     * @return void
+     */
     public function startSession()
     {
+        $cookie_path = implode("/", array_slice(explode("/", $_SERVER['SCRIPT_NAME']), 0, -1));
+        $secure_cookie = nvl($_SERVER, 'HTTPS');
+        // IIS returns 'off' if not https
+        $secure_cookie = isset($secure_cookie) && $secure_cookie != 'off';
         session_write_close();
-//        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', true));
-        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', false));
-        // @todo include federation name - or the session name might not be unique.
-        session_name(sha1($this->_metadata['current']['entityID']));
+        // @todo remember general alert for non-https requests ...
+        // @todo what about INTERNAL bindings ???
+        session_set_cookie_params(0, $cookie_path, '', $secure_cookie);
+        session_name(sha1($this->_metadata['current']['entityID'] . '-' . $this->_metadata['current']['federation']));
         session_start();
     }
 
@@ -846,27 +847,12 @@ class Corto_ProxyServer {
      */
     public function getSystemLog()
     {
-        if (!isset($this->_systemLog)) {
-            $this->_systemLog = new Corto_Log_Dummy();
-        }
-
         return $this->_systemLog;
     }
 
     public function getSessionLog()
     {
-        if (isset($this->_sessionLog)) {
-            return $this->_sessionLog;
-        }
-
-        $this->_sessionLogDefault = new Corto_Log_Dummy();
-        if (!isset($this->_sessionLogDefault)) {
-        }
-
-        $sessionLog = $this->_sessionLogDefault;
-        $sessionLog->setId(session_id());
-        $this->_sessionLog = $sessionLog;
-        return $this->_sessionLog;
+        return $this->_systemLog;
     }
 
     public function setSystemLog(Corto_Log_Interface $log)
@@ -874,8 +860,4 @@ class Corto_ProxyServer {
         $this->_systemLog = $log;
     }
 
-    public function setSessionLogDefault($logDefault)
-    {
-        $this->_sessionLogDefault = $logDefault;
-    }
 }

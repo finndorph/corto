@@ -4,7 +4,8 @@ if (!class_exists('XMLWriter')) {
     die('XMLWriter class does not exist! Please install libxml extension for php.');
 }
 
-class Corto_XmlToArray_Exception extends Corto_ProxyServer_Exception {}
+class Corto_XmlToArray_Exception extends Corto_ProxyServer_Exception {
+}
 
 /**
  *
@@ -372,7 +373,7 @@ class Corto_XmlToArray {
             // pad the line with the required number of leading spaces
             $line = str_pad($token, strlen($token) + $pad, ' ', STR_PAD_LEFT);
             $result .= $line . "\n"; // add to the cumulative result, with linefeed
-            $token = strtok("\n"); // get the next token
+            $token = strtok($xml, "\n"); // get the next token
             $pad += $indent; // update the pad size for subsequent lines
         endwhile;
 

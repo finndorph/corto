@@ -1,5 +1,7 @@
 <?php
 
+include "../Library/Corto/cortolib.php";
+error_reporting(E_WARNING);
 $cmd = preg_split("/\//", $_SERVER['PATH_INFO'], -1, PREG_SPLIT_NO_EMPTY);
 if (!$cmd) {
 
@@ -80,21 +82,15 @@ if (!$cmd) {
      * - discovery
      *
 
-     request in   request
-     request out  orig request new request
-     response in  request response
-     response out request response
-     discovery
-
-
-
-
-
-
-
+    request in   request
+    request out  orig request new request
+    response in  request response
+    response out request response
+    discovery
 
      */
 
+    session_name('filtertest');
     session_start();
 
     $filters = array(array('php' => 'DefaultFilter::demofilter'),
@@ -113,9 +109,15 @@ if (!$cmd) {
      * - a remote webservice
      * - a remote webservice with a number of user interactions
      */
+    if (handlefilters()) {
+        $data = array('abc' => array('def'));
+    }
+    if (handlefilters($data, $filters)) {
+        $data['abc'][] = 'hij';
+    }
+    if (handlefilters($data, $filters)) {
 
-    $data = array('abc' => 'def');
-    $data = handlefilters($data, $filters);
+    }
 
     header('Content-Type: text/plain');
     print_r($data);
@@ -123,99 +125,6 @@ if (!$cmd) {
 } else {
     DefaultFilter::demofilter2();
 
-}
-
-function handlefilters($data, $filters)
-{
-    /*
-     * Backend need to have 'cortopassthru' in POST / GET - can be used as backend session id as well
-     * Corto data is always sent to backend - is in corto session anyway - no need to save in
-     * backend session as well!
-     */
-    $cortopassthru = $_POST['cortopassthru'] . $_GET['cortopassthru'];
-    $cortofirstcall = false;
-
-    /*
-    * First time thru - set up session
-    * Need unique id as a user can have more than one filter active at any one time
-    */
-    if (empty($cortopassthru)) {
-        $cortopassthru = sha1(uniqid(mt_rand(), true));
-        $_SESSION['corto_filter'][$cortopassthru]['i'] = 0;
-        $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
-        $cortofirstcall = true;
-        unset($_POST);
-    }
-
-    /*
-     * Loop thru all the filters
-     * callfilter does NOT return if there is user interaction involved
-     * Stop when there are no more filters
-     */
-    while (1) {
-        $filter = $filters[$_SESSION['corto_filter'][$cortopassthru]['i']];
-        if (!$filter) {
-            unset($_SESSION['corto_filter'][$cortopassthru]);
-            return $data;
-        }
-        $data = $_SESSION['corto_filter'][$cortopassthru]['data'];
-        $data = callfilter($filter, $data, $cortopassthru, $cortofirstcall);
-        $_SESSION['corto_filter'][$cortopassthru]['i']++;
-        $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
-        $cortofirstcall = true;
-        unset($_POST);
-    }
-}
-
-function callfilter($filter, $data, $cortopassthru, $cortofirstcall)
-{
-    $_POST['cortodata'] = $data;
-    $_POST['cortocookiepath'] = "";
-    $_POST['cortopassthru'] = $cortopassthru;
-    $_POST['cortofirstcall'] = $cortofirstcall;
-    $_POST['cortolocation'] = 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://'
-            . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    if ($thefilter = $filter['url']) {
-        $_POST['cortotoken'] = $filter['token'];
-        $_POST['cortoreturn'] = 'json';
-
-        $cookiestr = "";
-        $delim = "";
-        foreach ((array) $_SESSION['corto_filter'][$cortopassthru]['cookies'] as $name => $value) {
-            $cookiestr .= "$name=$value$delim";
-            $delim = ";";
-        }
-        if ($cookiestr) {
-            $cookiestr = "Cookie: $cookiestr\r\n";
-        }
-        $context = stream_context_create(array(
-            'http' => array(
-                'method' => 'POST',
-                'header' => $cookiestr . "Content-type: application/x-www-form-urlencoded\r\n",
-                'content' => http_build_query($_POST),
-                'timeout' => 5,
-            ),
-        ));
-
-        $ret = file_get_contents($thefilter, false, $context);
-        foreach ($http_response_header as $header) {
-            if (substr(strtolower($header), 0, 12) == 'set-cookie: ') {
-                $namevalue = split('=', array_shift(explode(';', trim(substr($header, 12)))));
-                $_SESSION['corto_filter'][$cortopassthru]['cookies'][trim($namevalue[0])] = trim($namevalue[1]);
-            }
-        }
-        if (in_array('X-Corto-Return: true', $http_response_header)) {
-            return json_decode($ret, 1);
-        } else {
-            print $ret;
-            exit;
-        }
-    } elseif ($thefilter = $filter['php']) {
-        $_POST['cortoreturn'] = 'array';
-        return call_user_func($thefilter, $_POST);
-    } else {
-        // exception ...
-    }
 }
 
 class DefaultFilter {
@@ -231,20 +140,21 @@ class DefaultFilter {
     static function demofilter2()
     {
         if ($_POST['cortoreturn'] == 'json') {
+            session_name('backend');
             session_start();
         }
 
         if ($_POST['cortofirstcall']) {
-            $d = $_POST['cortodata'];
-        } else {
-            $d = $_SESSION['DefaultFilter_demofilter2'];
+            $_SESSION['DefaultFilter_demofilter2'] = $_POST['cortodata'];
         }
+        $d = $_SESSION['DefaultFilter_demofilter2'];
 
-        $d['c']++;
-        $d['demo'][] = 'Demo was here';
-        $d['filters'][] = 'DefaultFilter.:demofilter2';
-        $d['input'][] = $_POST['state'];
-        if (!$_POST['nomore']) {
+        if ($_POST['nomore']) {
+            $d['input'][] = 'x' . $_POST['state'];
+        } else {
+            $d['c']++;
+            $d['demo'][] = $_POST['cortoreturn'];
+            $d['filters'][] = 'DefaultFilter.:demofilter2';
             $_SESSION['DefaultFilter_demofilter2'] = $d;
             $_SESSION['c']++;
             ?>
@@ -254,8 +164,8 @@ class DefaultFilter {
                 <form method=POST action="<?= $_POST['cortolocation'] ?>">
                     <input type="submit" name="Submit">
                     <input type="hidden" name="cortopassthru" value="<?= $_POST['cortopassthru'] ?>">
-                    <input type="text" name="state" value="anton banton">
-                    <input type="checkbox" name="nomore" value="1">
+                    <input type="text" name="state" value="<?= $_SESSION['c'] ?>">
+                    <input type="checkbox" name="nomore" value="1" checked>
 
                     <p>Count: <?= $_SESSION['c'] ?></p>
 
