@@ -39,7 +39,8 @@ SAML entities.
     response back. The saml request will be
     displayed
     at 'null' in print_r format. When the response get back to
-    'app' it will also be displayed on this page in print_r format.
+    'app' it will also be displayed on this page in print_r format. At certain places in the processing of responses a Corto filter
+will step in and ask you to continue as well.
 
 <form method=POST action="<?php echo $action ?>">
     <input type=hidden name=doit value=1>

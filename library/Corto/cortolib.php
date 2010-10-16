@@ -224,3 +224,35 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
         // exception ...
     }
 }
+
+function attributes2array($attributes)
+{
+    $res = array();
+    foreach ((array) $attributes as $attribute) {
+        foreach ($attribute['saml:AttributeValue'] as $value) {
+            $res[$attribute['_Name']][] = $value['__v'];
+        }
+    }
+    return $res;
+}
+
+function array2attributes($attributes)
+{
+    $res = array();
+    foreach ((array) $attributes as $name => $attribute) {
+        $newAttribute = array(
+            '_Name' => $name,
+            '_NameFormat' => 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic',
+        );
+        foreach ((array) $attribute as $value) {
+            $newAttribute['saml:AttributeValue'][] = array(
+                '_xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
+                '_xsi:type' => 'xs:string',
+                '__v' => $value,
+            );
+        }
+        $res[] = $newAttribute;
+    }
+    return $res;
+}
+
