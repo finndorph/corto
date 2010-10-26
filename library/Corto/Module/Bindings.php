@@ -255,7 +255,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $message = gzinflate(base64_decode($_GET[$key]));
         $messageArray = $this->_getArrayFromReceivedMessage($message);
 
-        $relayState = "";
         if (isset($_GET['RelayState'])) {
             $relayState         = $_GET['RelayState'];
             $messageArray[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['RelayState'] = $relayState;
@@ -314,7 +313,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
      * @param array $message
      * @throws Corto_Module_Bindings_VerificationException
      */
-    protected function _verifyKnownIssuer($message)
+    protected function _verifyKnownIssuer(array $message)
     {
         $messageIssuer = $message['saml:Issuer']['__v'];
         $remoteEntity = $this->_server->getRemoteEntity($messageIssuer);
