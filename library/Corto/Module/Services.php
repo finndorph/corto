@@ -269,7 +269,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             return;
         }
 
-        $this->_storeConsent($serviceProviderEntityId, $attributes);
+        $this->_storeConsent($serviceProviderEntityId, $response, $attributes);
 
         $response['_Consent'] = 'urn:oasis:names:tc:SAML:2.0:consent:obtained';
         $response['_Destination'] = $response['__']['Return'];
@@ -541,7 +541,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $table = $this->_server->getConfig('ConsentDbTable', 'consent');
             $query = "SELECT * FROM {$table} WHERE hashed_user_id = ? AND service_id = ? AND attribute = ?";
             $parameters = array(
-                sha1($responseAttributes['uid'][0]),
+                sha1($this->_getConsentUid($response, $responseAttributes)),
                 $serviceProviderEntityId,
                 $attributesHash
             );
@@ -566,7 +566,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         return false;
     }
 
-    protected function _storeConsent($serviceProviderEntityId, $attributes)
+    protected function _storeConsent($serviceProviderEntityId, $response, $attributes)
     {
         $dbh = $this->_getConsentDatabaseConnection();
         if (!$dbh) {
@@ -577,7 +577,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
                   VALUES (NOW(), ?, ?, ?)
                   ON DUPLICATE KEY UPDATE usage_date=VALUES(usage_date), attribute=VALUES(attribute)";
         $parameters = array(
-            sha1($attributes['uid'][0]),
+            sha1($this->_getConsentUid($response, $attributes)),
             $serviceProviderEntityId,
             $this->_getAttributesHash($attributes)
         );
@@ -588,6 +588,11 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         return true;
+    }
+
+    protected function _getConsentUid($response, $attributes)
+    {
+        return $attributes['urn:mace:dir:attribute-def:uid'];
     }
 
     /**
