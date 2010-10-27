@@ -592,7 +592,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
     protected function _getConsentUid($response, $attributes)
     {
-        return $attributes['urn:mace:dir:attribute-def:uid'];
+        return $attributes['urn:mace:dir:attribute-def:uid'][0];
     }
 
     /**
