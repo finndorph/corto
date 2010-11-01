@@ -381,7 +381,7 @@ class Corto_ProxyServer
             '_IsPassive'                        => ($originalRequest['_IsPassive']) ? 'true' : 'false',
 
             // Send the response to us.
-            '_AssertionConsumerServiceURL'      => $this->getCurrentEntityUrl('AssertionConsumerService'),
+            '_AssertionConsumerServiceURL'      => $this->getCurrentEntityUrl('assertionConsumerService'),
             '_ProtocolBinding'                  => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
 
             '_AttributeConsumingServiceIndex'   => $originalRequest['_AttributeConsumingServiceIndex'],
