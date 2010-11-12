@@ -4,9 +4,19 @@
  *
  */
 require 'XmlToArray.php';
+require '../library/Corto/cortolib.php';
 
 class Corto_ProxyServer_Exception extends Exception {
 }
+
+/**
+ * ProxyServer is the main controller in Corto. It coordinates receiving
+ * and servicing SAML messages using the injected bindings and services
+ * modules.
+ *
+ * @throws Corto_ProxyServer_Exception
+ *
+ */
 
 class Corto_ProxyServer {
     const MODULE_BINDINGS = 'Bindings';
@@ -28,23 +38,18 @@ class Corto_ProxyServer {
     protected $_hostedPath = "/";
 
     protected $_configs;
-    protected $_metadata = array(
-        'current' => array(),
-        'remote' => array(),
-        'federations' => array(),
-    );
+    protected $_metadata = array();
 
-    protected $_url2meta = array();
     protected $_attributes = array();
     protected $_modules = array();
-    protected $_templateSource;
+    protected $_templatePath;
 
     public function __construct()
     {
         $this->_server = $this;
     }
 
-//////// GETTERS / SETTERS /////////
+    //////// GETTERS / SETTERS /////////
 
     /**
      * @return Corto_Module_Bindings
@@ -100,26 +105,7 @@ class Corto_ProxyServer {
         return $this;
     }
 
-    public function getConfig($name, $default = null)
-    {
-        if (isset($this->_configs[$name])) {
-            return $this->_configs[$name];
-        }
-        return $default;
-    }
-
-    public function getConfigs()
-    {
-        return $this->_configs;
-    }
-
-    public function setConfigs($configs)
-    {
-        $this->_configs = $configs;
-        return $this;
-    }
-
-   public function getCurrentEntity()
+    public function getCurrentEntity()
     {
         return $this->_metadata['current'];
     }
@@ -129,6 +115,13 @@ class Corto_ProxyServer {
         return $this->getHostedEntityUrl(nvl($this->_metadata['current'], 'EntityCode'), $serviceName, $remoteEntityId);
     }
 
+    /**
+     * @param  $name
+     * @param  $default
+     * @return array
+     *
+     * @todo look in entity, federation and in "global" settings
+     */
     public function getCurrentEntitySetting($name, $default = null)
     {
         if (isset($this->_metadata['current'][$name])) {
@@ -176,7 +169,7 @@ class Corto_ProxyServer {
 
     public function getPresetIDPs()
     {
-        return nvl3($this->_metadata, 'current', 'IDP', 'corto:IDPList');
+        return nvl3($this->_metadata, 'current', 'IDP', 'corto:IDPList', array());
     }
 
     public function getAllowedIDPs()
@@ -198,31 +191,29 @@ class Corto_ProxyServer {
     }
 
 
-    public function setUrl2meta($url2meta)
+    public function setMetadata($metadatafile)
     {
-        $this->_url2meta = $url2meta;
+        /**
+         * This is to allow the default metadata to be independent of the location of corto
+         * Replaces _HOSTED_ with the actual location
+         */
+        $hosted = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
+        $cohosted = join("/", array_slice(explode("/", $hosted), 0, -1));
+
+        $metadatadata = file_get_contents($metadatafile);
+        $metadatadata = str_replace('_HOSTED_', $hosted, $metadatadata);
+        $metadatadata = str_replace('_COHOSTED_', $cohosted, $metadatadata);
+        #return include 'data:text/plain,' . $metadatadata;
+        $this->_metadata = eval($metadatadata);
     }
 
-    public function setRemoteEntities($entities)
+    public function setTemplatePath($path)
     {
-        $this->_metadata['federations'] = $entities;
-    }
-
-    public function setTemplateSource($type, $arguments)
-    {
-        $this->_templateSource = array(
-            'type' => $type,
-            'arguments' => $arguments,
-        );
+        $this->_templatePath = $path;
         return $this;
     }
 
-    public function getTemplateSource()
-    {
-        return $this->_templateSource;
-    }
-
-//////// MAIN /////////
+    //////// MAIN /////////
     /**
      * Main method for handling all requests to the ProxyServer
      *
@@ -232,8 +223,8 @@ class Corto_ProxyServer {
     public function serveRequest($uri = null)
     {
         /*
-        * non null $uri is used for the INTERNAL binding
-        */
+           * non null $uri is used for the INTERNAL binding
+           */
         if (!$uri) {
             $uri = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
                     . $_SERVER['PHP_SELF'];
@@ -258,16 +249,24 @@ class Corto_ProxyServer {
      */
     public function getParametersFromUrl($uri)
     {
-        foreach ((array) $this->_url2meta as $federation => $url2meta) {
-            if ($remote = $url2meta[$uri]) break;
+        #print_r($this->_metadata);
+        foreach ((array) $this->_metadata['lookuptable'] as $federation => $url2meta) {
+            if ($remote = nvl($url2meta, $uri)) break;
         }
 
         if (!isset($remote)) {
             throw new Corto_ProxyServer_Exception("No entity found for url: $uri");
         }
 
+        if (is_array($remote)) {
+        } else {
+            $remote = array(
+                'EntityID' => $uri,
+                'Service' => 'metadataservice',
+                #'Binding' => 'URI' - not used - always URI don't bother using bindings
+            );
+        }
         $remote['Federation'] = $federation;
-
         return $remote;
     }
 
@@ -287,7 +286,7 @@ class Corto_ProxyServer {
         $this->_metadata['current'] = $this->_metadata['remote'][$entityID];
     }
 
-////////  REQUEST HANDLING /////////
+    ////////  REQUEST HANDLING /////////
 
     /**
      * Send a (proxied) authenticationrequest, optionally use the corto:ProxySP as the
@@ -302,10 +301,15 @@ class Corto_ProxyServer {
     public function sendAuthenticationRequest(array $request, $idp, $scope = null)
     {
         $originalId = $request['_ID'];
+        $issuer = $this->_metadata['remote'][$request['saml:Issuer']['__v']];
+        $proxySP = nvl3($issuer['SP'], 'corto:proxySP', 0, '__v');
+        if (!$proxySP) {
+            $proxySP = nvl3($this->_metadata['current']['IDP'], 'corto:ProxySP', 0, '__v');
+        }
 
-        if (($proxySP = nvl($this->_metadata['current']['IDP'], 'corto:ProxySP')) && $proxySP[0]) {
+        if ($proxySP) {
             $request['__']['ProxyIDP'] = $this->_metadata['current']['entityID'];
-            $this->_metadata['current'] = $this->_metadata['remote'][$proxySP[0]];
+            $this->_metadata['current'] = $this->_metadata['remote'][$proxySP];
             $this->startSession();
         }
 
@@ -317,7 +321,7 @@ class Corto_ProxyServer {
 
         // Store the mapping from the new request ID to the original request ID
         $_SESSION[$newId] = array();
-        $_SESSION[$newId]['SAMLRequest'] = $request;
+        #$_SESSION[$newId]['SAMLRequest'] = $request;
         $_SESSION[$newId]['_InResponseTo'] = $originalId;
 
         $this->getBindingsModule()->send($newRequest, $this->_metadata['remote'][$idp]);
@@ -385,7 +389,7 @@ class Corto_ProxyServer {
             $request['samlp:Scoping']['_ProxyCount']--;
         }
         else {
-            $request['samlp:Scoping']['_ProxyCount'] = $this->getConfig('max_proxies', 10);
+            $request['samlp:Scoping']['_ProxyCount'] = $this->getCurrentEntitySetting('max_proxies', 10);
         }
 
         // Add the issuer of the original request as requester
@@ -402,7 +406,276 @@ class Corto_ProxyServer {
         return $request;
     }
 
-//////// RESPONSE HANDLING ////////
+    /**
+     * Single Logout handling
+     */
+
+    /**
+     *
+     * Saves the info needed for later SLO:
+     * - Issuer of incoming response or receipient of out going response
+     * - Subject
+     * - Time when no longer valid @@todo notonorafter - for slo info
+     *
+     * SLO can be initiated from a back-end request so we need to be able
+     * to get to the subjects incoming and outgoing responses using only
+     * subject and entityid
+     *
+     * @param array $message
+     */
+
+    public function saveSloInfo(array $message)
+    {
+        $issuer = $message['saml:Issuer']['__v'];
+        $md = $this->getCurrentEntity();
+        $me = $md['entityID'];
+        if ($issuer == $me) { // outgoing response
+            $type = 'SP';
+            $entity = $message['__']['destinationid'];
+        } else { // incoming response
+            $type = 'IDP';
+            $entity = $issuer;
+        }
+        if (!nvl2($this->getRemoteEntity($entity), 'SP', 'saveSLOInfo')) {
+            return;
+        }
+        ;
+        // @todo support SessionIndex and SubjectConfirmation, EncryptedID
+        $id = nvl3($message, 'saml:Assertion', 'saml:Subject', 'saml:NameID');
+        if (!$id) {
+            throw new Corto_ProxyServer_Exception("No NameID in message (EncryptedID not supported yet!)");
+        }
+        $sessionnotonorafter = nvl3($message, 'saml:Assertion', 'saml:AuthnStatement', '_SessionNotOnOrAfter');
+        $sessionindex = session_id();
+        $key = 'ID-' . sha1($me . serialize($id));
+        if ($notonorafter = db_del($key, 'notonorafter')) {
+            if ($notonorafter > timeStamp()) {
+                db_put($key, $notonorafter, 'notonorafter'); // be prepared for yet another one ...
+                throw new Corto_ProxyServer_Exception("A very rare, but yet unsupported situation has happened:
+                An sssertion was received while an earlier LogoutRequest was still active: notonorafter = $notonorafter");
+            }
+        }
+        db_add($key, $sessionindex, 'session');
+        $info = array(
+            'entity' => $entity,
+            'nameID' => $id,
+            'nameIDType' => 'saml:NameID',
+            'sessionnotonorafter' => $sessionnotonorafter,
+            'session' => $sessionindex,
+        );
+        db_put($type . '-' . $sessionindex, $info, sha1($entity));
+    }
+
+    /**
+     * Initialises the SLO information based on an incoming SLO request.
+     * Starts the SLO process by calling handleslo with a fake request.
+     *
+     * @throws Corto_ProxyServer_Exception
+     * @param  array $message - a SLO request
+     * @return void
+     *
+     */
+
+    public function sloinit($message)
+    {
+        $me = $this->getCurrentEntity();
+        $me = $me['entityID'];
+        $id = nvl($message, 'saml:NameID');
+        if (!$id) {
+            throw new Corto_ProxyServer_Exception("No NameID in message (EncryptedID not supported yet!)");
+        }
+        $key = 'ID-' . sha1($me . serialize($id));
+        if ($notonorafter = nvl($message, '_NotOnOrAfter')) {
+            db_put($key, $notonorafter, 'NotOnOrAfter');
+        }
+        $sessions = db_del($key, 'session');
+        $msgid = $message['_ID'];
+        $sloinfo = array(
+            'sessions' => $sessions,
+            'ID' => $msgid,
+            'Issuer' => $message['saml:Issuer']['__v'],
+            'Binding' => $message['__']['Binding'],
+            'NotOnOrAfter' => $notonorafter,
+            'success' => true,
+        );
+        db_put('SLO-' . $msgid, $sloinfo);
+        $fakemsgid = ID();
+        db_put('REQ-' . $fakemsgid, array('ID' => $msgid));
+        return $this->handleslo(array('_InResponseTo' => $fakemsgid));
+    }
+
+    /**
+     * Handles the reception of SLO responses and sending of new SLO requests.
+     * Deletes information for handled SLO request and finally deletes the session
+     * the original SLO request was sent to.
+     *
+     * @param  array $message
+     * @return void
+     *
+     *
+     */
+    public function handleslo(array $message)
+    {
+        $me = nvl($this->getCurrentEntity(), 'entityID');
+        $inresponseto = $message['_InResponseTo'];
+        $req = db_get('REQ-' . $inresponseto);
+        if ($remote = nvl($req, 'entity')) {
+            db_del($req['type'] . '-' . $req['sessionindex'], sha1($remote));
+        }
+
+        $sloinfo = db_get('SLO-' . $req['ID']);
+        $success = 'urn:oasis:names:tc:SAML:2.0:status:Success';
+        if ($status = nvl2($message, 'samlp:Status', 'samlp:StatusCode')) {
+            if ($status['_Value'] != $success || nvl2($status, 'samlp:StatusCode', '_Value')) {
+                $sloinfo['success'] = false;
+                db_put('SLO-' . $req['request '], $sloinfo);
+            }
+        }
+        foreach ((array) nvl($sloinfo, 'sessions') as $session => $dummy) {
+            foreach (array('IDP', 'SP') as $type) {
+                $responses = db_get($type . '-' . $session, '*');
+                foreach ($responses as $hashedentity => $info) {
+                    if ($info['entity'] == $sloinfo['Issuer']) {
+                        db_del($type . '-' . $session, $hashedentity);
+                        continue;
+                    }
+                    $id = ID();
+                    $info['ID'] = $id;
+                    $info['type'] = $type;
+                    debug("REQ id+", $id);
+                    db_put("REQ-$id", serialize($info));
+                    $response = $this->sendLogoutRequest($info);
+                    if (!$response) {
+                        $res = false;
+                    } else {
+                        $status = $response['samlp:Status']['samlp:StatusCode'];
+                        $res = $status['_Value'] != $success || nvl2($status, 'samlp:StatusCode', '_Value');
+                    }
+                    if (!$res && $sloinfo['success']) {
+                        $sloinfo['success'] = false;
+                        db_put('SLO-' . $req['ID'], serialize($sloinfo));
+                    }
+                }
+                ;
+                db_del('REQ-' . $inresponseto);
+            }
+            delete_corto_session($session);
+        }
+        db_del('SLO-' . $req['ID']);
+        $this->sendLogoutResponse($sloinfo);
+    }
+
+
+    /**
+     * Sends a SLO request base on the info in the slorequest info - returns if the binding
+     * is SOAP.
+     *
+     * @param  array $slorequestinfo
+     * @return bool
+     *
+     */
+    public function sendLogoutRequest($slorequestinfo)
+    {
+        $type = $slorequestinfo['type'];
+        $entity = $slorequestinfo['entity'];
+        $sloEndpoints = nvl($this->_metadata['remote'][$entity][$type], 'SingleLogoutService');
+        if (!$sloEndpoints) {
+            return false;
+        }
+
+        foreach ($sloEndpoints as $endpoint) {
+            $slobybinding[$endpoint['Binding']][] = $endpoint;
+        }
+
+        $bindings = array('SOAP', 'HTTP-Redirect', 'HTTP-POST', 'HTTP-Artifact');
+        foreach ($bindings as $binding) {
+            if ($endpoints = nvl($slobybinding, 'urn:oasis:names:tc:SAML:2.0:bindings:' . $binding)) {
+                break;
+            }
+        }
+        $endpoint = $endpoints[0];
+
+        $request = array(
+            '__t' => 'samlp:LogoutRequest',
+            '__' => array(
+                'destinationid' => $entity,
+                'ProtocolBinding' => $endpoint['Binding'],
+                'paramname' => 'SAMLRequest',
+            ),
+            '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
+            '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+
+            '_ID' => $slorequestinfo['ID'],
+            '_Version' => '2.0',
+            '_IssueInstant' => $this->timeStamp(),
+            '_Destination' => $endpoint['Location'],
+            '_NotOnOrAfter' => timeStamp(5),
+            'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
+        );
+
+        $request[$slorequestinfo['nameIDType']] = $slorequestinfo['nameID'];
+        // only actually returns if soap call ...
+        $soapresponse = $this->getBindingsModule()->send($request, $this->_metadata['remote'][$entity]);
+    }
+
+    /**
+     * Send a logoutresponse to the issuer of the original request
+     *
+     * @param  $request - the original request
+     * @param  $partial - true if not all slo request sent from this entity was successful
+     * @return void
+     */
+    public function sendLogoutResponse($sloinfo)
+    {
+        $remote = $this->_metadata['remote'][$sloinfo['Issuer']];
+        if ($sloinfo['Binding'] == 'urn:oasis:names:tc:SAML:2.0:bindings:SOAP') {
+            $endpoint['Binding'] = $sloinfo['Binding'];
+        } else {
+            foreach (array('SP', 'IDP') as $type) {
+                $sloEndpoints = $remote[$type]['SingleLogoutService'];
+                foreach ($sloEndpoints as $endpoint) {
+                    $binding = $endpoint['Binding'] == $sloinfo['Binding'];
+                    if ($binding) {
+                        break 2;
+                    }
+                }
+            }
+            if (!$binding) {
+                $endpoint = reset($sloEndpoints);
+            }
+        }
+
+        $response = array(
+            '__t' => 'samlp:LogoutResponse',
+            '__' => array(
+                'destinationid' => $sloinfo['Issuer'],
+                'ProtocolBinding' => $endpoint['Binding'],
+                'paramname' => 'SAMLResponse',
+            ),
+            '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
+            '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+
+            '_ID' => $this->getNewId(),
+            '_Version' => '2.0',
+            '_IssueInstant' => $this->timeStamp(),
+            '_Destination' => nvl($endpoint, 'Location'),
+            '_InResponseTo' => $sloinfo['ID'],
+            'samlp:Status' => array(
+                'samlp:StatusCode' => array(
+                    '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
+                ),
+            ),
+        );
+        if (!$sloinfo['success']) {
+            $response['samlp:Status']['samlp:StatusCode']['samlp:StatusCode'] = array(
+                '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:PartialLogout',
+            );
+        }
+        return $this->getBindingsModule()->respond($response, $remote);
+    }
+
+
+    //////// RESPONSE HANDLING ////////
 
     public function createErrorResponse($request, $errorStatus)
     {
@@ -462,8 +735,8 @@ class Corto_ProxyServer {
     {
         $response = $this->_createBaseResponse($request);
 
-        $soon = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
-        $sessionEnd = $this->timeStamp($this->getConfig('SessionEnd', 60 * 60 * 12));
+        $soon = $this->timeStamp($this->getCurrentEntitySetting('NotOnOrAfter', 300));
+        $sessionEnd = $this->timeStamp($this->getCurrentEntitySetting('SessionEnd', 60 * 60 * 12));
 
         $response['saml:Assertion'] = array(
             '_xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
@@ -597,15 +870,17 @@ class Corto_ProxyServer {
         return $response;
     }
 
+
     function sendResponseToRequestIssuer($request, $response)
     {
         $requestIssuer = $request['saml:Issuer']['__v'];
+        unset($_SESSION[$request['_ID']]);
         $sp = $this->getRemoteEntity($requestIssuer);
 
         if ($response['samlp:Status']['samlp:StatusCode']['_Value'] == 'urn:oasis:names:tc:SAML:2.0:status:Success') {
 
-            $this->filterOutputAssertionAttributes($response, $request);
-
+            //			$this->filterOutputAssertionAttributes($response, $request);
+            $this->saveSloInfo($response);
             return $this->getBindingsModule()->send($response, $sp);
         }
         else {
@@ -628,6 +903,7 @@ class Corto_ProxyServer {
             throw new Corto_ProxyServer_Exception("ID `$id` does not have a _InResponseTo?!?");
         }
         $originalRequestId = $_SESSION[$id]['_InResponseTo'];
+        unset($_SESSION[$id]);
 
         if (!isset($_SESSION[$originalRequestId]['SAMLRequest'])) {
             throw new Corto_ProxyServer_Exception('Response has no known Request');
@@ -635,72 +911,20 @@ class Corto_ProxyServer {
         return $_SESSION[$originalRequestId]['SAMLRequest'];
     }
 
-////////  ATTRIBUTE FILTERING /////////
-
-    public function filterInputAssertionAttributes(&$response, $request)
-    {
-        $hostedEntityMetaData = $this->_metadata['current'];
-
-        $responseIssuer = $response['saml:Issuer']['__v'];
-        $idpEntityMetadata = $this->getRemoteEntity($responseIssuer);
-
-        $requestIssuer = $request['saml:Issuer']['__v'];
-        $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
-
-        if (isset($hostedEntityMetaData['infilter'])) {
-            $this->callAttributeFilter($hostedEntityMetaData['infilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
-        }
-    }
-
-    public function filterOutputAssertionAttributes(&$response, $request)
-    {
-        $hostedMetaData = $this->_metadata['current'];
-
-        $responseDestination = $response['__']['destinationid'];
-        $idpEntityMetadata = $this->_metadata['remote'][$responseDestination];
-
-        $hostedMetaData = $this->_metadata['current'];
-        $remoteMetaData = $this->_metadata['remote'][$responseDestination];
-        $requestIssuer = $request['saml:Issuer']['__v'];
-        $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
-
-        if (isset($hostedMetaData['outfilter'])) {
-            $this->callAttributeFilter($hostedMetaData, $hostedMetaData['outfilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
-        }
-    }
-
-
-    protected function callAttributeFilter($callback, array &$response, array $request, array $spEntityMetadata, array $idpEntityMetadata)
-    {
-        if (!$callback || !is_callable($callback)) {
-            // @todo Non existing callbacks shouldn't give an exception, just a warning...
-            throw new Corto_ProxyServer_Exception('callback: ' . var_export($callback, true) . ' isn\'t callable');
-        }
-
-        $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
-
-        // Take the attributes out
-        $responseAttributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
-        // Pass em along
-        call_user_func_array($callback, array(&$response, &$responseAttributes, $request, $spEntityMetadata, $idpEntityMetadata));
-        // Put em back where they belong
-        $responseAssertionAttributes = Corto_XmlToArray::array2attributes($responseAttributes);
-    }
-
-////////  TEMPLATE RENDERING /////////
+    ////////  TEMPLATE RENDERING /////////
 
     public function renderTemplate($templateName, $vars = array(), $parentTemplates = array())
     {
-        $this->getSessionLog()->debug("Rendering template '$templateName'");
         if (!is_array($vars)) {
             $vars = array('content' => $vars);
         }
 
-        $templateFileName = $templateName . '.phtml';
+        $templateFileName = $this->_templatePath . $templateName . '.phtml';
 
         ob_start();
+        extract($vars);
 
-        $this->_renderTemplate($templateFileName, $vars);
+        include($templateFileName);
 
         $content = ob_get_contents();
         ob_end_clean();
@@ -716,39 +940,8 @@ class Corto_ProxyServer {
         return $content;
     }
 
-    protected function _renderTemplate($templateFileName, $vars)
-    {
-        extract($vars);
 
-        $source = $this->getTemplateSource();
-        switch ($source['type'])
-        {
-            case self::TEMPLATE_SOURCE_MEMORY:
-                if (!isset($source['arguments'][$templateFileName])) {
-                    throw new Corto_ProxyServer_Exception("Unable to load template '$templateFileName' from memory!");
-                }
-
-                eval('?>' . $source['arguments'][$templateFileName] . '<?');
-                break;
-
-            case self::TEMPLATE_SOURCE_FILESYSTEM;
-                if (!isset($source['arguments']['FilePath'])) {
-                    throw new Corto_ProxyServer_Exception('Template path not set, unable to render templates from filesystem!');
-                }
-
-                $filePath = $source['arguments']['FilePath'] . $templateFileName;
-                if (!file_exists($filePath)) {
-                    throw new Corto_ProxyServer_Exception('Template file does not exist: ' . $filePath);
-                }
-
-                include($filePath);
-                break;
-            default:
-                throw new Corto_ProxyServer_Exception('No template source set! Please configure a template source with Corto_ProxyServer->setTemplateSource()');
-        }
-    }
-
-//////// I/O /////////
+    //////// I/O /////////
 
     /**
      * Parse the HTTP URL query string and return the (raw) parameters in an array.
@@ -773,7 +966,7 @@ class Corto_ProxyServer {
     {
         $this->getSessionLog()->debug("Redirecting to $location");
 
-        if ($this->getConfig('debug', true)) {
+        if ($this->getCurrentEntitySetting('debug', true)) {
             $output = $this->renderTemplate('redirect', array('location' => $location, 'message' => $message));
             $this->sendOutput($output);
         } else {
@@ -792,7 +985,7 @@ class Corto_ProxyServer {
         return print $rawOutput;
     }
 
-//////// UTILITIES /////////
+    //////// UTILITIES /////////
 
 
     /**
@@ -831,6 +1024,7 @@ class Corto_ProxyServer {
         session_set_cookie_params(0, $cookie_path, '', $secure_cookie);
         session_name(sha1($this->_metadata['current']['entityID'] . '-' . $this->_metadata['current']['federation']));
         session_start();
+        #$_SESSION['__entity__'] = $this->_metadata['current']['entityID'];
     }
 
     protected function restartSession($newId, $newName)

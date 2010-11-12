@@ -7,6 +7,24 @@
  * To change this template use File | Settings | File Templates.
  */
 
+
+function _getCertDataFromPem($pemKey)
+{
+    $lines = explode("\n", $pemKey);
+    $data = '';
+    foreach ($lines as $line) {
+        $line = rtrim($line);
+        if ($line === '-----BEGIN CERTIFICATE-----') {
+            $data = '';
+        } elseif ($line === '-----END CERTIFICATE-----') {
+            break;
+        } else {
+            $data .= $line . PHP_EOL;
+        }
+    }
+    return $data;
+}
+
 function encrypt($cleartext, $passphrase)
 {
     if (function_exists('mcrypt_encrypt')) {
@@ -94,6 +112,16 @@ function nvl3($array, $index, $index2, $index3, $default = null)
     return $default;
 }
 
+function any($array)
+{
+    for ($i = 1; $i <= func_num_args(); $i++) {
+        if ($res = nvl($array, func_get_arg($i))) {
+            return $res;
+        }
+    }
+    return null;
+}
+
 function ID()
 {
     return sha1(uniqid(mt_rand(), true));
@@ -105,6 +133,78 @@ function timeStamp($delta = 0)
     return gmdate('Y-m-d\TH:i:s\Z', time() + $delta);
 }
 
+function debug($name, $x)
+{
+    file_put_contents('/tmp/corto_debug_log', "$name:\n" . print_r($x, 1) . "\n+++\n", FILE_APPEND);
+}
+
+function db_get($key, $subkey = '_')
+{
+    $id = db_start($key);
+    if ($subkey == '*') {
+        $res = $_SESSION;
+    } else {
+        $res = nvl($_SESSION, $subkey);
+    }
+    db_end($id);
+    return $res;
+}
+
+function db_put($key, $value, $subkey = '_')
+{
+    $id = db_start($key);
+    $_SESSION[$subkey] = $value;
+    db_end($id);
+}
+
+function db_add($key, $value, $subkey = '_')
+{
+    $id = db_start($key);
+    if (empty($_SESSION[$subkey][$value])) {
+        $_SESSION[$subkey][$value] = 1;
+    } else {
+        $_SESSION[$subkey][$value]++;
+    }
+    db_end($id);
+}
+
+function db_del($key, $subkey = '_')
+{
+    $id = db_start($key);
+    if ($subkey == '*') {
+        $res = $_SESSION;
+        session_destroy();
+    } else {
+        $res = nvl($_SESSION, $subkey);
+        unset($_SESSION[$subkey]);
+        if (empty($_SESSION)) {
+            session_destroy();
+        }
+    }
+    db_end($id);
+    return $res;
+}
+
+function db_start($key)
+{
+    session_write_close();
+    $id = session_id($key);
+    session_start();
+    return $id;
+}
+
+function db_end($id)
+{
+    session_write_close();
+    session_id($id);
+    session_start();
+}
+
+function delete_corto_session($sessionid)
+{
+    db_del($sessionid, '*');
+}
+
 /*
  *    $filters = array(array('php' => 'DefaultFilter::demofilter'),
  *                     array('php' => 'DefaultFilter::demofilter2'),
@@ -114,7 +214,38 @@ function timeStamp($delta = 0)
  *
  */
 
-function handlefilters($phase = 'init', &$data = null, $filters = null)
+
+function initfilters()
+{
+    return handlefilters('init');
+}
+
+
+function doresponseinputfilters(&$state, &$filters, &$input)
+{
+    // returns [attributes, response]
+    // if response == null use attributes for for existing response
+    return handlefilters("responsein", $state, $filters, $input);
+}
+
+function doresponseoutputfilters(&$state, &$filters, &$input)
+{
+    // returns [attributes, response]
+    // if response == null use attributes for for existing response
+    return handlefilters("responseout", $state, $filters, $input);
+}
+
+function attributeaggreatorfilter()
+{
+
+}
+
+function dorequestfilter(&$state, &$filters, &$input)
+{
+    return handlefilters("request", $state, $filters, $input);
+}
+
+function handlefilters($phase, &$state = null, &$filters = null, &$data = null)
 {
     $cortopassthru = nvl($_POST, 'cortopassthru') . nvl($_GET, 'cortopassthru');
     if ($phase == 'init') {
@@ -124,48 +255,53 @@ function handlefilters($phase = 'init', &$data = null, $filters = null)
         return true;
     }
     /*
-     * Backend need to have 'cortopassthru' in POST / GET - can be used as backend session id as well
-     * Corto data is always sent to backend - is in corto session anyway - no need to save in
-     * backend session as well!
-     */
+      * Backend need to have 'cortopassthru' in POST / GET - can be used as backend session id as well
+      * Corto data is always sent to backend - is in corto session anyway - no need to save in
+      * backend session as well!
+      */
     $cortofirstcall = false;
 
     /*
-    * First time thru - set up session
-    * Need unique id as a user can have more than one filter active at any one time
-    */
+      * First time thru - set up session
+      * Need unique id as a user can have more than one filter active at any one time
+      */
     $dbt = debug_backtrace();
-    $fileline = sha1($dbt[0]['file'] . $dbt[0]['line']);
+    $fileline = sha1($dbt[1]['file'] . $dbt[1]['line']);
 
     if (empty($cortopassthru)) {
         $cortopassthru = sha1(uniqid(mt_rand(), true));
     }
     if (empty($_SESSION['corto_filter'][$cortopassthru])) {
         $_SESSION['corto_filter'][$cortopassthru]['i'] = 0;
+        $_SESSION['corto_filter'][$cortopassthru]['state'] = $state;
         $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
         $_SESSION['corto_filter'][$cortopassthru]['fileline'] = $fileline;
+        $_SESSION['corto_filter'][$cortopassthru]['filters'] = $filters;
         $cortofirstcall = true;
         unset($_POST);
+        $_POST = null;
     }
 
     /*
-     * This is
-     */
+      * This is
+      */
     if ($_SESSION['corto_filter'][$cortopassthru]['fileline'] != $fileline) {
         return false;
     }
     /*
-     * Loop thru all the filters
-     * callfilter does NOT return if there is user interaction involved
-     * Stop when there are no more filters
-     */
+      * Loop thru all the filters
+      * callfilter does NOT return if there is user interaction involved
+      * Stop when there are no more filters
+      */
 
 
-    while (1) {
-        $filter = nvl($filters, $_SESSION['corto_filter'][$cortopassthru]['i']);
+    while (true) {
+        $filter = nvl($_SESSION['corto_filter'][$cortopassthru]['filters'], $_SESSION['corto_filter'][$cortopassthru]['i']);
         if (!$filter) {
-            unset($_SESSION['corto_filter'][$cortopassthru]);
-            return true;
+            $state = $_SESSION['corto_filter'][$cortopassthru]['state'];
+            #unset($_SESSION['corto_filter'][$cortopassthru]);
+            unset($_SESSION['corto_filter']);
+            return $data;
         }
         $data = $_SESSION['corto_filter'][$cortopassthru]['data'];
         $data = callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall);
@@ -217,7 +353,7 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
             print_r($http_response_header);
             exit;
         }
-    } elseif ($thefilter = $filter['php']) {
+    } elseif ($thefilter = nvl($filter, 'php')) {
         $_POST['cortoreturn'] = 'array';
         return call_user_func($thefilter, $_POST);
     } else {
@@ -254,5 +390,21 @@ function array2attributes($attributes)
         $res[] = $newAttribute;
     }
     return $res;
+}
+
+function merge($a, $b)
+{
+    foreach ((array) $b as $k => $v) {
+        if (is_array($v)) {
+            if (!isset($a[$k])) {
+                $a[$k] = $v;
+            } else {
+                $a[$k] = merge($a[$k], $v);
+            }
+        } else {
+            $a[$k] = $v;
+        }
+    }
+    return $a;
 }
 

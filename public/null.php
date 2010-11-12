@@ -13,7 +13,7 @@ $response = array(
     '__' => array(
         'paramname' => 'SAMLResponse',
         'RelayState' => !empty($request['__']['RelayState']) ? $request['__']['RelayState'] : NULL,
-    ),
+),
     '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
     '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
     '_ID' => ID(),
@@ -24,18 +24,18 @@ $response = array(
     'samlp:Status' => array(
         'samlp:StatusCode' => array(
             '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
-        ),
-    ),
+),
+),
 );
 
 $destinationid = $request['saml:Issuer']['__v'];
 $response['__']['destinationid'] = $destinationid;
 
 if ($acsurl = $request['_AssertionConsumerServiceURL']) {
-    $response['_Destination'] = $acsurl;
-    $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
+	$response['_Destination'] = $acsurl;
+	$response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
 } else {
-    die("No Destination in request or metadata for: $destinationid");
+	die("No Destination in request or metadata for: $destinationid");
 }
 
 $response['saml:Assertion'] = array(
@@ -53,23 +53,23 @@ $response['saml:Assertion'] = array(
             '_SPNameQualifier' => $entityID,
             '_Format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
             '__v' => ID(),
-        ),
+),
         'saml:SubjectConfirmation' => array(
             '_Method' => 'urn:oasis:names:tc:SAML:2.0:cm:bearer',
             'saml:SubjectConfirmationData' => array(
                 '_NotOnOrAfter' => $soon,
                 '_Recipient' => $request['_AssertionConsumerServiceURL'], # req issuer
                 '_InResponseTo' => $request['_ID'],
-            ),
-        ),
-    ),
+),
+),
+),
     'saml:Conditions' => array(
         '_NotBefore' => $now,
         '_NotOnOrAfter' => $soon,
         'saml:AudienceRestriction' => array(
             'saml:Audience' => array('__v' => $request['saml:Issuer']['__v']),
-        ),
-    ),
+),
+),
     'saml:AuthnStatement' => array(
         '_AuthnInstant' => $now,
         '_SessionNotOnOrAfter' => $sessionEnd,
@@ -77,27 +77,27 @@ $response['saml:Assertion'] = array(
         'saml:SubjectLocality' => array(
             '_Address' => $_SERVER['REMOTE_ADDR'],
             '_DNSName' => !empty($_SERVER['REMOTE_HOST']) ? $_SERVER['REMOTE_HOST'] : gethostbyaddr($_SERVER['REMOTE_ADDR']),
-        ),
+),
         'saml:AuthnContext' => array(
             'saml:AuthnContextClassRef' => array('__v' => 'urn:oasis:names:tc:SAML:2.0:ac:classes:Password'),
-        ),
-    ),
+),
+),
 );
 
 $attributes['uid'][] = 'abc@null';
 $attributes['idp'][] = $request['saml:Issuer']['__v'];
 foreach ((array) $attributes as $name => $attr) {
-    $newattr = array(
+	$newattr = array(
         '_Name' => $name,
         '_NameFormat' => 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic',
-    );
-    foreach ((array) $attr as $val) {
-        $newattr['saml:AttributeValue'][] = array(
+	);
+	foreach ((array) $attr as $val) {
+		$newattr['saml:AttributeValue'][] = array(
             '_xsi:type' => 'xs:string',
             '__v' => $val,
-        );
-    }
-    $res[] = $newattr;
+		);
+	}
+	$res[] = $newattr;
 }
 
 
@@ -107,9 +107,10 @@ $location = $response['_Destination'] . "?SAMLResponse=" . urlencode(base64_enco
 ?>
 <html>
 <body>
+<p>This is the response from the null authenticator!</p>
 <a href="<?php echo $location ?>">GO</a>
 <pre>
-<?php print_r($response) ?>
+<?php print_r($response); print_r($request); ?>
 </pre>
 </body>
 </html>

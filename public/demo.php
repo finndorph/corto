@@ -1,4 +1,5 @@
 <?php
+include '../library/Corto/cortolib.php';
 
 demoapp();
 exit;
@@ -9,10 +10,27 @@ function demoapp()
 
     $corto = join("/", array_slice(explode("/", 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
 
-    $self =  $corto . '/index.php';
+    $self = $corto . '/index.php';
     $corto = $corto . '/index.php';
+    if (isset($_POST['doslo'])) {
+        $request = array(
+            '__t' => 'samlp:LogoutRequest',
+            '_ID' => sha1(uniqid(mt_rand(), true)),
+            '_Version' => '2.0',
+            '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
+            '_Destination' => "$corto/sp/Mads/SLO",
+            'saml:Issuer' => array('__v' => $self),
+            'saml:NameID' => json_decode(stripcslashes($_POST['subject']), 1),
+            '_NotOnOrAfter' => timeStamp(10),
+        );
+        $location = $request['_Destination'];
+        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(encrypt(json_encode($request), $sharedkey))));
+        print render('redirect', array('location' => $location, 'message' => $request));
+        exit;
+
+    }
     if (isset($_POST['doit'])) {
-        $idp = empty($_POST['idp']) ? NULL: $_POST['idp'];
+        $idp = empty($_POST['idp']) ? NULL : $_POST['idp'];
         if (!$idp) {
             $idp = "sp";
         }
@@ -20,10 +38,10 @@ function demoapp()
             '_ID' => sha1(uniqid(mt_rand(), true)),
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
-            '_Destination' => "$corto/$idp/Mads", #"$corto/$idp/Mads",
+            '_Destination' => "$corto/$idp/Mads",
             '_ForceAuthn' => !empty($_REQUEST['ForceAuthn']) ? 'true' : 'false',
             '_IsPassive' => !empty($_REQUEST['IsPassive']) ? 'true' : 'false',
-#            '_AssertionConsumerServiceURL' => $corto,
+            #            '_AssertionConsumerServiceURL' => $corto,
             'AssertionConsumerServiceIndex' => 0,
             '_AttributeConsumingServiceIndex' => 5,
             '_ProtocolBinding' => 'JSON-Redirect',
@@ -31,11 +49,11 @@ function demoapp()
         );
 
         if (!empty($_REQUEST['IDPList'])) {
-    	    foreach ((array) $_REQUEST['IDPList'] as $idp) {
+            foreach ((array) $_REQUEST['IDPList'] as $idp) {
                 $idpList[] = array('_ProviderID' => $idp);
                 $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'] = $idpList;
             }
-    	}
+        }
 
         $relayState = 'Dummy RelayState ...';
         #$request['samlp:Scoping']['_ProxyCount'] = 2;
@@ -57,7 +75,7 @@ function demoapp()
         'demo',
         array(
             'action' => $self,
-#                'idps' => array_keys($GLOBALS['metabase']['remote']),
+            #                'idps' => array_keys($GLOBALS['metabase']['remote']),
             'SAMLResponse' => $SAMLResponse,
             'message' => "RelayState: " . nvl($_GET, 'RelayState'),
             'self' => $self)
