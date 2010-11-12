@@ -47,7 +47,7 @@ try {
         ),
     );
 
-    $metadatafile = dirname(__FILE__) . '/../configs/corto_metadata.php';
+    $metadatafile = '/var/tmp/corto_optimized_metadata.php';
 
     #$meta->prepareMetadata($metadatasources, $metadatafile);
 

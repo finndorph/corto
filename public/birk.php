@@ -12,91 +12,40 @@ session_save_path('/tmp');
 
 set_error_handler('error2exception', E_ALL);
 
-function error2exception($errno, $errmsg)
-{
+function error2exception($errno, $errmsg) {
     throw new Exception('This Error Happened ' . $errno . ': ' . $errmsg);
 }
 
 try {
-
-/*
- * If called without path - use demo.php
- */
-    if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] == '/ACS') {
-        include '../library/Corto/cortolib.php';
-
-        demoapp();
-        exit;
-    }
 
     require '../library/Corto/ProxyServer.php';
     $server = new Corto_ProxyServer();
     require '../filters/DemoFilter.php';
 
 /*
- * Initializing metadata for demo purposes
+ * If called without path - use demo.php
  */
+    $metadatafile = '/var/tmp/birk_optimized_metadata.php';
 
-    $metadatafile = dirname(__FILE__) . '/../configs/birk_optimized_metadata.php';
+    if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] == '/moc.elgoog-ACS'|| $_SERVER['PATH_INFO'] == '/ude@evil-ACS') {
+        updatemetadata($metadatafile);
+        $server->setMetadata($metadatafile);
+        $idplist = $server->getAllowedIDPs('testing', true);
 
-    /**
-    require '../library/Corto/Module/Metadata.obsolete.php';
-
-    $meta = new Corto_Module_Metadata();
-    $remotemd = 'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto';
-    $md = Corto_XmlToArray::xml2array(file_get_contents($remotemd), true);
-
-    $metadatasources = array(
-        'federations' => array(
-            'testing' => array(
-                'public' => array(
-                    'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
-                    $md,
-                ),
-            ),
-        ),
-    );
-
-
-    $meta->prepareMetadata($metadatasources, $metadatafile);
-
-    $md = eval(file_get_contents($metadatafile));
-    foreach ($md['federations']['testing'] as $id => $entity) {
-        unset($entity['original']);
-        if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
-            $entities[$id] = $entity;
-            continue;
-        } else {
-            $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
-            $entity['corto:sharedkey'] = array(
-                array('__v' => 'abrakadabra'),
-            );
-            $newentity = $entity;
-            $newentity['IDP']['corto:IDPList'][0] = '_HOSTED_/wayf.wayf.dk';
-            $newentity['IDP']['corto:IDPList'][1] = $id;
-            $newentity['entityID'] = $newid;
-            $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
-            $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
-            $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
-            $lookuptablextra[$sso] = array(
-                'EntityID' => $newid,
-                'Service' => 'SingleSignOnService',
-                'Binding' => 'JSON-Redirect',
-            );
-
-            $entities[$newid] = $newentity;
-
-            unset($entity['IDP']['corto:IDPList']);
-            $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
-            $entities[$id] = $entity;
+        foreach($idplist as $ssoservice) {
+            if (preg_match("/\/proxy\//", $ssoservice)) {
+                $proxyidps[] = $ssoservice;
+            }
         }
+
+        demoapp($proxyidps);
+        exit;
     }
 
-    $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
-    file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
-    @rename($metadatafile . '.tmp', $metadatafile);
 
-*/
+/*
+ * Initializing metadata for demo purposes
+ */
     $server->setMetadata($metadatafile);
 
     $server->setTemplatePath(dirname(__FILE__) . '/../templates/');
@@ -128,31 +77,13 @@ try {
     echo $e->getTraceAsString();
 }
 
-function demoapp()
-{
+function demoapp($idplist) {
     $sharedkey = 'abrakadabra';
 
     $birk = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
 
     $self = $birk;
 
-    if (isset($_POST['doslo'])) {
-        $request = array(
-            '__t' => 'samlp:LogoutRequest',
-            '_ID' => sha1(uniqid(mt_rand(), true)),
-            '_Version' => '2.0',
-            '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
-            '_Destination' => "$birk/sp/Mads/SLO",
-            'saml:Issuer' => array('__v' => $self),
-            'saml:NameID' => json_decode(stripcslashes($_POST['subject']), 1),
-            '_NotOnOrAfter' => timeStamp(10),
-        );
-        $location = $request['_Destination'];
-        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(encrypt(json_encode($request), $sharedkey))));
-        print render('redirect', array('location' => $location, 'message' => $request));
-        exit;
-
-    }
     if (isset($_POST['doit'])) {
         $sp = $_POST['sp'];
         $idp = $_POST['idp'];
@@ -161,7 +92,7 @@ function demoapp()
             '_ID' => sha1(uniqid(mt_rand(), true)),
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
-            '_Destination' => $birk . '/proxy/wayf.supportcenter.dk/asg/saml2/idp/SSOService.php',
+            '_Destination' => $idp,
             '_ForceAuthn' => !empty($_REQUEST['ForceAuthn']) ? 'true' : 'false',
             '_IsPassive' => !empty($_REQUEST['IsPassive']) ? 'true' : 'false',
             #            '_AssertionConsumerServiceURL' => $corto,
@@ -192,15 +123,14 @@ function demoapp()
         'birk',
         array(
             'action' => $self,
-            #                'idps' => array_keys($GLOBALS['metabase']['remote']),
             'SAMLResponse' => $SAMLResponse,
             'message' => "RelayState: " . nvl($_GET, 'RelayState'),
-            'self' => $self)
+            'self' => $self,
+            'idplist' => $idplist,)
     );
 }
 
-function render($template, $vars = array())
-{
+function render($template, $vars = array()) {
     extract($vars); // Extract the vars to local namespace
     ob_start(); // Start output buffering
     include('../templates/' . $template . '.phtml'); // Include the file
@@ -209,3 +139,82 @@ function render($template, $vars = array())
     return $content; // Return the content
 }
 
+function updatemetadata($metadatafile) {
+    require '../library/Corto/Module/Metadata.php';
+
+    $meta = new Corto_Module_Metadata();
+    $remotemd = 'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto';
+    $md = Corto_XmlToArray::xml2array(file_get_contents($remotemd), true);
+
+    $metadatasources = array(
+        'federations' => array(
+            'testing' => array(
+                'public' => array(
+                    'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
+                    $md,
+                ),
+            ),
+        ),
+    );
+
+
+    $meta->prepareMetadata($metadatasources, $metadatafile);
+
+    $md = eval(file_get_contents($metadatafile));
+    foreach ($md['federations']['testing'] as $id => $entity) {
+        unset($entity['original']);
+        if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
+            $entities[$id] = $entity;
+            continue;
+        } else {
+            $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
+            $entity['corto:sharedkey'] = array(
+                array('__v' => 'abrakadabra'),
+            );
+            $newentity = $entity;
+            $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayf.wayf.dk', $id);
+            $newentity['entityID'] = $newid;
+            $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
+
+            $asc = $sso . "/ACS";
+            $entity['SP'] = array(
+                'AssertionConsumerService' =>
+                array(
+                    1 =>
+                    array(
+                        'Location' => $asc,
+                        'Binding' => 'JSON-Redirect',
+                    ),
+                    'default' => 1,
+                ),
+            );
+
+            $lookuptablextra[$asc] = array(
+                'EntityID' => $id,
+                'Service' => 'AssertionConsumerService',
+                'Binding' => 'JSON-Redirect',
+            );
+
+
+            $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
+            $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
+
+            $lookuptablextra[$sso] = array(
+                'EntityID' => $newid,
+                'Service' => 'SingleSignOnService',
+                'Binding' => 'JSON-Redirect',
+            );
+
+
+            $entities[$newid] = $newentity;
+
+            unset($entity['IDP']['corto:IDPList']);
+            $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
+            $entities[$id] = $entity;
+        }
+    }
+
+    $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
+    file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
+    @rename($metadatafile . '.tmp', $metadatafile);
+}

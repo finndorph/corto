@@ -172,20 +172,32 @@ class Corto_ProxyServer {
         return nvl3($this->_metadata, 'current', 'IDP', 'corto:IDPList', array());
     }
 
-    public function getAllowedIDPs()
+    public function getAllowedIDPs($federation = null, $sso = false)
     {
         $res = array();
-        foreach ($this->_metadata['remote'] as $id => $entity) {
+        if ($federation) {
+            $metadata = $this->_metadata['federations'][$federation];
+        } else {
+            $metadata = $this->_metadata['remote'];
+        }
+        foreach ($metadata as $id => $entity) {
             if (isset($entity['IDP']['SingleSignOnService'])) {
-                if ($entity['entityID'] == $this->_metadata['current']['entityID']) continue;
+                if ($entity['entityID'] == nvl2($this->_metadata, 'current', 'entityID')) continue;
                 $res[] = $entity['entityID'];
             }
         }
-        if ($allowedIDPs = nvl2($this->_metadata['current'], 'SP', 'corto:allowedIDPs')) {
+        if ($allowedIDPs = nvl3($this->_metadata, 'current', 'SP', 'corto:allowedIDPs')) {
             $res = array_intersect($res, $allowedIDPs);
         }
-        if ($deniedIDPs = nvl2($this->_metadata['current'], 'SP', 'corto:deniedIDPs')) {
+        if ($deniedIDPs = nvl3($this->_metadata, 'current' , 'SP', 'corto:deniedIDPs')) {
             $res = array_diff($res, $deniedIDPs);
+        }
+
+        if ($sso) {
+            foreach($res as $entityid) {
+                $ssoservices[] = $metadata[$entityid]['IDP']['SingleSignOnService'][0]['Location']; 
+            }
+            return $ssoservices;
         }
         return $res;
     }

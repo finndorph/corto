@@ -31,7 +31,7 @@ return array(
                             'md:AssertionConsumerService' => array(
                                 array(
                                     '_Binding' => 'JSON-Redirect',
-                                    '_Location' => '_COHOSTED_/birk.php/ACS',
+                                    '_Location' => '_COHOSTED_/birk.php/ude@evil-ACS',
                                     '_index' => 1,
                                 ),
                             ),
@@ -73,6 +73,74 @@ return array(
                                 array(
                                     '_Binding' => 'JSON-Redirect',
                                     '_Location' => '_HOSTED_/ude@evil-proxy/SLO',
+                                    '_index' => 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                array(
+                    '_entityID' => '_HOSTED_/moc.elgoog',
+                    'md:Extensions' => array(
+                        'mdattr:EntityAttributes' => array(
+                            'saml:Attribute' => array(
+                                array(
+                                    '_Name' => 'corto:sharedkey',
+                                    'saml:AttributeValue' => array(
+                                        array('__v' => 'abrakadabra'),
+                                    ),
+                                ),
+                            )
+                        ),
+                    ),
+                    'md:SPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:AssertionConsumerService' => array(
+                                array(
+                                    '_Binding' => 'JSON-Redirect',
+                                    '_Location' => '_COHOSTED_/birk.php/moc.elgoog-ACS',
+                                    '_index' => 1,
+                                ),
+                            ),
+                            'md:SingleLogoutService' => array(
+                                array(
+                                    '_Binding' => 'JSON-Redirect',
+                                    '_Location' => '_COHOSTED_/birk.php/moc.elgoog/SLO',
+                                    '_index' => 1,
+                                ),
+                            ),
+                            'md:Extensions' => array(
+                                'mdattr:EntityAttributes' => array(
+                                    'saml:Attribute' => array(
+                                        array(
+                                            '_Name' => 'corto:proxySP',
+                                            'saml:AttributeValue' => array(
+                                                array('__v' => '_HOSTED_/moc.elgoog-proxy'),
+                                            ),
+                                        ),
+                                    )
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                array(
+                    '_entityID' => '_HOSTED_/moc.elgoog-proxy',
+                    'md:SPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:AssertionConsumerService' => array(
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => '_HOSTED_/moc.elgoog-proxy/ACS',
+                                    '_index' => 1,
+                                ),
+                            ),
+                            'md:SingleLogoutService' => array(
+                                array(
+                                    '_Binding' => 'JSON-Redirect',
+                                    '_Location' => '_HOSTED_/moc.elgoog-proxy/SLO',
                                     '_index' => 1,
                                 ),
                             ),
