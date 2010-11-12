@@ -3,22 +3,12 @@
     <style type="text/css" title="text/css">
         <!--
         body {
-            margin: 0em 1em;
-            width: 50em;
+            width: 55em;
         }
-
-        tt {
-            color: #7BB84A;
-            font-size: inherited;
-            font-family: inherited;
-        }
-
         -->
     </style>
 </head>
 <body>
-<br/>
-
 <p>Welcome to the Birk demopage.</p>
 
 <p>Birk is Wayf.dk's "Reverse Peer to Peer Federation in a Box". To the outside it looks like 92 IDPs and to the inside
@@ -51,21 +41,20 @@
     AuthenticationAuthorities in the resulting assertion - which will be displayed below.</p>
 
 <form method=POST action="<?php echo $action ?>">
-    Select SP:<select name="sp">
+    Select SP: <select name="sp">
     <option>ude@evil</option>
     <option>moc.elgoog</option>
 </select>
 
     <p>
-       Select IDP: <select name="idp">
-        <?php echo "<option>" . join("</option><option>", $idplist) . "</option>"; ?>
-        </select>
+        Select IDP: <select name="idp">
+    <?php echo "<option>" . join("</option><option>", $idplist) . "</option>"; ?>
+    </select>
     </p>
-    <p>    <input type=hidden name=doit value=1> <input type=submit value="Demo">
-</p>
-</form>
 
-<p><?php echo $message ?></p>
+    <p><input type=hidden name=doit value=1> <input type=submit value="Demo">
+    </p>
+</form>
 <pre>
 <?php echo preg_replace("/\n\n/", "\n", preg_replace("/Array\n\s+/", "Array ", htmlspecialchars(print_r($SAMLResponse, 1)))); ?>
         </pre>

@@ -4,7 +4,7 @@ if (!class_exists('XMLWriter')) {
 	die('XMLWriter class does not exist! Please install libxml extension for php.');
 }
 
-class Corto_XmlToArray_Exception extends Corto_ProxyServer_Exception {
+class Corto_XmlToArray_Exception {
 }
 
 /**
