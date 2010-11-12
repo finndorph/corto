@@ -112,16 +112,6 @@ function nvl3($array, $index, $index2, $index3, $default = null)
     return $default;
 }
 
-function any($array)
-{
-    for ($i = 1; $i <= func_num_args(); $i++) {
-        if ($res = nvl($array, func_get_arg($i))) {
-            return $res;
-        }
-    }
-    return null;
-}
-
 function ID()
 {
     return sha1(uniqid(mt_rand(), true));
@@ -204,16 +194,6 @@ function delete_corto_session($sessionid)
 {
     db_del($sessionid, '*');
 }
-
-/*
- *    $filters = array(array('php' => 'DefaultFilter::demofilter'),
- *                     array('php' => 'DefaultFilter::demofilter2'),
- *                    array('url' => 'http://localhost/corto/public/filtertest.php/filter1', 'token' => 'secret'),
- *
- *
- *
- */
-
 
 function initfilters()
 {
