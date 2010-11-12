@@ -3,11 +3,11 @@ error_reporting(E_ALL);
 
 $really = in_array('--really', $argv);
 
-require '../library/Corto/cortolib.php';
-require '../library/Corto/XmlToArray.php';
-require '../library/Corto/Module/Metadata.php';
+require dirname(__FILE__) . '../library/Corto/cortolib.php';
+require dirname(__FILE__) . '../library/Corto/XmlToArray.php';
+require dirname(__FILE__) . '../library/Corto/Module/Metadata.php';
 
-$metadatafile = 'birk_optimized_metadata.php';
+$metadatafile = dirname(__FILE__) . 'birk_optimized_metadata.php';
 
 preparemetadataforbirk($metadatafile, $really);
 
