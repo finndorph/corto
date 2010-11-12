@@ -30,7 +30,7 @@ function preparemetadataforbirk($metadatafile, $really = false)
 
     $md = eval(file_get_contents($metadatafile));
     foreach ($md['federations']['testing'] as $id => $entity) {
-        unset($entity['original']);
+        #unset($entity['original']);
         if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
             $entities[$id] = $entity;
             continue;
