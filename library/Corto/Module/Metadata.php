@@ -209,7 +209,7 @@ class Corto_Module_Metadata {
 
         foreach ($metadata as $federation => $federationmetadata) {
             foreach ($federationmetadata as $id => $entity) {
-                $sourceid = sha1($id;)
+                $sourceid = sha1($id);
                 foreach (self::$descriptors as $descriptor) {
                     foreach (self::$services as $service) {
                         if (isset($entity[$descriptor][$service])) {
