@@ -68,7 +68,8 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             $demofilters = array(array('php' => 'StdSingleLogonService::sso'));
         }
 
-        if (dorequestfilter($state, $demofilters, $filterparams)) {}
+        if (dorequestfilter($state, $demofilters, $filterparams)) {
+        }
     }
 
     /**
@@ -197,10 +198,11 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      * @return void
      */
 
-    public function metadataservice() {
-        header('application/samlmetadata+xml');
-        $md = $this->_server->getCurrentEntity();
-        print(Corto_XmlToArray::array2xml($md['original'], 'md:EntityDescriptor'));
+    public function metadataservice()
+    {
+        header('Content-type: application/samlmetadata+xml');
+        $md = nvl($this->_server->getCurrentEntity(), 'original');
+        print(Corto_XmlToArray::array2xml($md, 'md:EntityDescriptor'));
     }
 
 }
