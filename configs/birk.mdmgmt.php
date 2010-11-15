@@ -81,6 +81,7 @@ function preparemetadataforbirk($metadatafile, $really = false)
             $entities[$id] = $entity;
         }
     }
+    print "#: " . count($entities);
     $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
     if ($really) {
         file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
