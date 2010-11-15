@@ -209,6 +209,7 @@ class Corto_Module_Metadata {
 
         foreach ($metadata as $federation => $federationmetadata) {
             foreach ($federationmetadata as $id => $entity) {
+                $sourceid = sha1($id;)
                 foreach (self::$descriptors as $descriptor) {
                     foreach (self::$services as $service) {
                         if (isset($entity[$descriptor][$service])) {
@@ -221,6 +222,9 @@ class Corto_Module_Metadata {
                                     'Service' => $service,
                                     'Binding' => $theservice['Binding'],
                                 );
+                                if ($theservice['Binding'] == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Artifact') {
+                                    $url2meta[$federation][$sourceid][$index] = $theservice['Location'];
+                                }
                             }
                         }
                     }
