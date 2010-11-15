@@ -131,18 +131,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $artifacts = base64_decode($_REQUEST[self::SAMLArt]);
         $artifacts = unpack(self::ARTIFACT_BINARY_FORMAT, $artifacts);
 
-        switch ($key) {
-            case self::SAMLRequest:
-                // Trying to get an artifact from an SP, identify ourselves as an idp
-                $issuer = $this->_server->getCurrentEntityUrl('idPMetadataService');
-                break;
-            case self::SAMLResponse:
-                // Trying to get an artifact from an IdP, identify ourselves as a sp
-                $issuer = $this->_server->getCurrentEntityUrl('sPMetadataService');
-                break;
-            default:
-                throw new Corto_Module_Bindings_Exception("Unknown message type '$key'");
-        }
+        $issuer = nvl($this->_server->getCurrentEntity(), 'EntityID');
 
         $artifactResolveMessage = array(
             'samlp:ArtifactResolve' => array(
@@ -156,35 +145,16 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
             ),
         );
 
-        if (!isset($artifacts['sourceid'])) {
-            throw new Corto_Module_Bindings_Exception("No Source ID found in SAML2 Artifact?!");
-        }
+        $artifactResolutionService = nvl($this->_server->getRemoteEntity($artifacts['sourceid']), $artifacts['endpointindex']);
 
-        $sourceEntity = $this->_server->getRemoteEntity($artifacts['sourceid']);
-        if (!$sourceEntity) {
-            throw new Corto_Module_Bindings_Exception("Entity {$artifacts['sourceid']} mentioned in SAML2 Artifact not registered!");
-        }
-        if (!isset($sourceEntity['ArtifactResolutionServiceLocation'])) {
-            throw new Corto_Module_Bindings_Exception("Entity {$artifacts['sourceid']} mentioned in SAML2 Artifact found, but no Artifact Resolution Service is registered");
-        }
+        $artifactResponse = $this->_soapRequest($artifactResolutionService, $artifactResolveMessage);
 
-        $artifactResponse = $this->_soapRequest($sourceEntity['ArtifactResolutionServiceLocation'], $artifactResolveMessage);
-
-        if ($key === self::SAMLRequest) {
-            if (isset($artifactResponse['samlp:ArtifactResponse']['samlp:AuthnRequest'])) {
-                $message = $artifactResponse['samlp:ArtifactResponse']['samlp:AuthnRequest'];
-                $message[Corto_XmlToArray::TAG_NAME_KEY] = 'samlp:AuthnRequest';
-            } else {
-                return false;
-            }
-        } else if ($key === self::SAMLResponse) {
-            if (isset($artifactResponse['samlp:ArtifactResponse']['samlp:AuthnRequest'])) {
-                $message = $artifactResponse['samlp:ArtifactResponse']['samlp:AuthnRequest'];
-                $message[Corto_XmlToArray::TAG_NAME_KEY] = 'samlp:Response';
-            } else {
-                return false;
-            }
+        if ($message = nvl($artifactResponse['samlp:ArtifactResponse'], 'samlp:AuthnRequest')) {
+            $message[Corto_XmlToArray::TAG_NAME_KEY] = 'samlp:AuthnRequest';
+        } elseif ($message = nvl($artifactResponse['samlp:ArtifactResponse'], 'samlp:Response')) {
+            $message[Corto_XmlToArray::TAG_NAME_KEY] = 'samlp:Response';
         }
+        ;
 
         $relayState = $_REQUEST['RelayState'];
         $message['__']['RelayState'] = $relayState;
@@ -761,7 +731,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 $this->_getCurrentEntityPrivateKey(),
                 $message
             );
-        } else if ($name == 'SAMLResponse' && isset($remoteEntity['WantsAssertionsSigned']) && $remoteEntity['WantsAssertionsSigned']) {
+        } else if ($name == 'SAMLResponse' && nvl($remoteEntity, 'WantsAssertionsSigned')) {
             $this->_server->getSessionLog()->debug("HTTP-Redirect: (Re-)Signing Assertion");
 
             $message['saml:Assertion']['__t'] = 'saml:Assertion';
@@ -775,8 +745,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
             );
             ksort($message['saml:Assertion']);
             #$enc = docrypt(certs::$server_crt, $message['saml:Assertion'], 'saml:EncryptedAssertion');
-        } else if ($name == 'SAMLResponse' && isset($remoteEntity['WantsResponsesSigned']) && $remoteEntity['WantsResponsesSigned']) {
-            $this->_server->getSessionLog()->debug("HTTP-Redirect: (Re-)Signing");
+        } else if ($name == 'SAMLResponse' && nvl($remoteEntity, 'WantsResponsesSigned')) {
+            $this->_server->getSessionLog()->debug("HTTP-Post: (Re-)Signing");
             $message = $this->_sign(
                 $this->_getCurrentEntityPrivateKey(),
                 $message
@@ -813,7 +783,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
 
 
         $extra = isset($message['__']['RelayState']) ? '<input type="hidden" name="RelayState" value="' . htmlspecialchars($message['__']['RelayState']) . '">' : '';
-        $extra .= isset($message['__']['return']) ? '<input type="hidden" name="return" value="' . htmlspecialchars($message['__']['return']) . '">' : '';
         $encodedMessage = htmlspecialchars(base64_encode($encodedMessage));
 
         $action = $message['_Destination'] . (isset($message['_Recipient']) ? $message['_Recipient'] : '');
@@ -1062,19 +1031,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
 
         openssl_free_key($key);
         $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
-        foreach ($element as $tag => $item) {
-            if ($tag == 'ds:Signature') {
-                continue;
-            }
-
-            $newElement[$tag] = $item;
-
-            if ($tag == 'saml:Issuer') {
-                $newElement['ds:Signature'] = $signature;
-            }
-        }
-
-        return $newElement;
+        $element['ds:Signature'] = $signature;
+        return $element;
     }
 
 }
