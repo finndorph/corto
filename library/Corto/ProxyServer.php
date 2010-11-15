@@ -1026,7 +1026,7 @@ class Corto_ProxyServer {
      */
     public function startSession()
     {
-        $cookie_path = implode("/", array_slice(explode("/", $_SERVER['SCRIPT_NAME']), 0, -1));
+        $cookie_path = $_SERVER['SCRIPT_NAME'];
         $secure_cookie = nvl($_SERVER, 'HTTPS');
         // IIS returns 'off' if not https
         $secure_cookie = isset($secure_cookie) && $secure_cookie != 'off';
