@@ -136,11 +136,6 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 $this->_server->setCurrentEntity($proxyIDP);
                 $this->_server->startSession();
             }
-            // Cache the response
-            if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-                $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
-                $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
-            }
 
             $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse, $proxySP);
             $state = get_defined_vars();
@@ -185,7 +180,7 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 'IssueInstant' => $this->_server->timeStamp(),
                 'InResponseTo' => $postData['SOAP-ENV:Body']['samlp:ArtifactResolve']['_ID'],
 
-                'saml:Issuer' => array('__v' => $this->_server->getCurrentEntityUrl()),
+                'saml:Issuer' => array('__v' => $this->_server->getCurrentMD('entityID')),
                 $element => $message,
             ),
         );
@@ -201,7 +196,7 @@ class Corto_Module_Services extends Corto_Module_Abstract {
     public function metadataservice()
     {
         header('Content-type: application/samlmetadata+xml');
-        $md = nvl($this->_server->getCurrentEntity(), 'original');
+        $md = $this->_server->$this->getCurrentMD('original');
         print(Corto_XmlToArray::array2xml($md, 'md:EntityDescriptor'));
     }
 

@@ -287,6 +287,9 @@ class Corto_XmlToArray {
             if (strpos($key, self::PRIVATE_KEY_PREFIX) === 0) {
                 # [__][<x>] is used for private attributes for internal consumption
             } elseif (strpos($key, self::ATTRIBUTE_KEY_PREFIX) === 0) {
+                if (substr($key, 1, 6) == 'xmlns:' && nvl($visiblenamespaces, substr($key, 7))) {
+                    continue;
+                }
                 $writer->writeAttribute(substr($key, 1), $value);
                 if (substr($key, 1, 6) == 'xmlns:') {
                     $visiblenamespaces[substr($key, 7)] = true;
@@ -304,7 +307,7 @@ class Corto_XmlToArray {
         foreach ((array) $hash as $key => $value) {
             if (is_int($key)) {
                 // Normal numeric index, value is probably a hash structure, recurse...
-                self::_array2xml($value, $elementName, $writer, $level + 1);
+                self::_array2xml($value, $elementName, $writer, $level + 1, $visiblenamespaces);
             } elseif ($key === self::VALUE_KEY) {
                 $writer->text($value);
             } elseif (strpos($key, self::PRIVATE_KEY_PREFIX) === 0) {
