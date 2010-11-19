@@ -147,7 +147,7 @@ return array(
                         ),
                     ),
                 ),
-                array(
+/*                array(
                     '_entityID' => '_HOSTED_/wayf.wayf.dk',
                     'md:IDPSSODescriptor' => array(
                         array(
@@ -186,7 +186,7 @@ return array(
                             ),
                         ),
                     ),
-                ),
+                )*/
                 array(
                     '_entityID' => '_COHOSTED_/null.php',
                     'md:IDPSSODescriptor' => array(

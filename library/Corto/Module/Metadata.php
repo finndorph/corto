@@ -78,6 +78,15 @@ class Corto_Module_Metadata {
         // ie. set ['saveSLOInfo'] to true, but do not set the ['saveSLOInfo'] at all
         // when false as it WILL overwrite the true !!!
         $meta = array();
+        if ($entitymd = nvl($rawmeta, 'md:EntityDescriptor')) {
+            $rawmeta['md:EntitiesDescriptor'] = array(
+                array(
+                    'md:EntityDescriptor' => $entitymd,
+                ),
+            );
+            unset($rawmeta['md:EntityDescriptor']);
+        }
+
         foreach ((array) $rawmeta['md:EntitiesDescriptor'] as $entitiesDescriptor) {
             $entitiescommon = array();
             if (isset($entitiesDescriptor['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'])) {

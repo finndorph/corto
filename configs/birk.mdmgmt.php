@@ -30,7 +30,7 @@ function preparemetadataforbirk($metadatafile, $really = false)
                         '_entityID' => '_COMMON_',
                         'md:IDPSSODescriptor' => array(
                             array(
-                               # '_WantAuthnRequestsSigned' => 'true',
+                                # '_WantAuthnRequestsSigned' => 'true',
                                 'md:Extensions' => array(
                                     'mdattr:EntityAttributes' => array(
                                         'saml:Attribute' => array(
@@ -234,10 +234,11 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
         'federations' => array(
             'testing' => array(
                 'private' => array(
-                    $commonmd,
+                    #$commonmd,
                 ),
                 'public' => array(
                     'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
+                    'https://betawayf.wayf.dk/saml2/idp/metadata.php',
                     'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto',
                 ),
             ),
@@ -245,7 +246,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
     );
 
     $meta->prepareMetadata($metadatasources, $metadatafile);
-    if (1) {
+    if (0) {
         $md = eval(file_get_contents($metadatafile));
         foreach ($md['federations']['testing'] as $id => $entity) {
             #unset($entity['original']);
@@ -305,4 +306,5 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
             print_r($export);
         }
     }
+    system("ls -l $metadatafile");
 }
