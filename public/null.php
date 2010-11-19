@@ -1,10 +1,9 @@
 <?php
 require '../library/Corto/cortolib.php';
+error_reporting(E_ALL);
 
-
-$sharedkey = 'abrakadabra';
 $privatekey =
-"-----BEGIN RSA PRIVATE KEY-----
+        "-----BEGIN RSA PRIVATE KEY-----
 MIIEmwIBAAKCAQAAqy8WhGwxwupZOTt88F9BzqcgD/Hu8SukmerGhLhKMWtx46AA
 SFv8VPP4Sg46JhUYy8uuyR7urLxYCLdxw/Fqbkfg50nI2zDhZ6Lz6Pm/ktqGLNAh
 D0x0em0Wd6C9236SnHD6HJquOd8V+Lpus+5tGZ4XjanJ00g/zwubAGCd0KCufI8A
@@ -32,8 +31,9 @@ R5saP5aJeR2ekvtGFc7jdEt6Xkgmtz2t8Lbpa8XHVWUH2F0DiVRVgBHkYHIY1SNO
 16+9G/Q5QlvTY6C2CLuy5TYQ+20OxqLjMxkSvdci8Q==
 -----END RSA PRIVATE KEY-----";
 
+
 $entityID = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
-$request = json_decode(decrypt(gzinflate(base64_decode($_GET['SAMLRequest'])), $sharedkey), 1);
+$request = json_decode(gzinflate(base64_decode($_GET['SAMLRequest'])), 1);
 $now = timeStamp();
 $soon = timeStamp(300);
 $sessionEnd = timeStamp(60 * 60 * 12);
@@ -42,7 +42,7 @@ $response = array(
     '__' => array(
         'paramname' => 'SAMLResponse',
         'RelayState' => !empty($request['__']['RelayState']) ? $request['__']['RelayState'] : NULL,
-),
+    ),
     '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
     '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
     '_ID' => ID(),
@@ -53,18 +53,18 @@ $response = array(
     'samlp:Status' => array(
         'samlp:StatusCode' => array(
             '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
-),
-),
+        ),
+    ),
 );
 
 $destinationid = $request['saml:Issuer']['__v'];
 $response['__']['destinationid'] = $destinationid;
 
 if ($acsurl = $request['_AssertionConsumerServiceURL']) {
-	$response['_Destination'] = $acsurl;
-	$response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
+    $response['_Destination'] = $acsurl;
+    $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
 } else {
-	die("No Destination in request or metadata for: $destinationid");
+    die("No Destination in request or metadata for: $destinationid");
 }
 
 $response['saml:Assertion'] = array(
@@ -82,23 +82,23 @@ $response['saml:Assertion'] = array(
             '_SPNameQualifier' => $entityID,
             '_Format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
             '__v' => ID(),
-),
+        ),
         'saml:SubjectConfirmation' => array(
             '_Method' => 'urn:oasis:names:tc:SAML:2.0:cm:bearer',
             'saml:SubjectConfirmationData' => array(
                 '_NotOnOrAfter' => $soon,
                 '_Recipient' => $request['_AssertionConsumerServiceURL'], # req issuer
                 '_InResponseTo' => $request['_ID'],
-),
-),
-),
+            ),
+        ),
+    ),
     'saml:Conditions' => array(
         '_NotBefore' => $now,
         '_NotOnOrAfter' => $soon,
         'saml:AudienceRestriction' => array(
             'saml:Audience' => array('__v' => $request['saml:Issuer']['__v']),
-),
-),
+        ),
+    ),
     'saml:AuthnStatement' => array(
         '_AuthnInstant' => $now,
         '_SessionNotOnOrAfter' => $sessionEnd,
@@ -106,27 +106,27 @@ $response['saml:Assertion'] = array(
         'saml:SubjectLocality' => array(
             '_Address' => $_SERVER['REMOTE_ADDR'],
             '_DNSName' => !empty($_SERVER['REMOTE_HOST']) ? $_SERVER['REMOTE_HOST'] : gethostbyaddr($_SERVER['REMOTE_ADDR']),
-),
+        ),
         'saml:AuthnContext' => array(
             'saml:AuthnContextClassRef' => array('__v' => 'urn:oasis:names:tc:SAML:2.0:ac:classes:Password'),
-),
-),
+        ),
+    ),
 );
 
 $attributes['uid'][] = 'abc@null';
 $attributes['idp'][] = $request['saml:Issuer']['__v'];
 foreach ((array) $attributes as $name => $attr) {
-	$newattr = array(
+    $newattr = array(
         '_Name' => $name,
         '_NameFormat' => 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic',
-	);
-	foreach ((array) $attr as $val) {
-		$newattr['saml:AttributeValue'][] = array(
+    );
+    foreach ((array) $attr as $val) {
+        $newattr['saml:AttributeValue'][] = array(
             '_xsi:type' => 'xs:string',
             '__v' => $val,
-		);
-	}
-	$res[] = $newattr;
+        );
+    }
+    $res[] = $newattr;
 }
 
 
@@ -136,13 +136,13 @@ $location = $response['_Destination'];
 $query = "SAMLResponse=" . urlencode(base64_encode(gzdeflate(json_encode($response))));
 
 if (true) {
-     $query .= '&SigAlg=' . urlencode('http://www.w3.org/2000/09/xmldsig#rsa-sha1');
-     $key = openssl_pkey_get_private($privatekey);
-     $signature = "";
-     openssl_sign($query, $signature, $key, OPENSSL_ALGO_SHA1);
-     openssl_free_key($key);
-     $location .= '?' . $query . '&Signature=' . urlencode(base64_encode($signature));
- }
+    $query .= '&SigAlg=' . urlencode('http://www.w3.org/2000/09/xmldsig#rsa-sha1');
+    $key = openssl_pkey_get_private($privatekey);
+    $signature = "";
+    openssl_sign($query, $signature, $key, OPENSSL_ALGO_SHA1);
+    openssl_free_key($key);
+    $location .= '?' . $query . '&Signature=' . urlencode(base64_encode($signature));
+}
 
 ?>
 <html>

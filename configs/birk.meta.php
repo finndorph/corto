@@ -17,7 +17,7 @@ return array(
                         'mdattr:EntityAttributes' => array(
                             'saml:Attribute' => array(
                                 array(
-                                    '_Name' => 'corto:sharedkey',
+                                    '_Name' => 'corto:dummy',
                                     'saml:AttributeValue' => array(
                                         array('__v' => 'abrakadabra'),
                                     ),
@@ -189,18 +189,6 @@ return array(
                 ),
                 array(
                     '_entityID' => '_COHOSTED_/null.php',
-                    'md:Extensions' => array(
-                        'mdattr:EntityAttributes' => array(
-                            'saml:Attribute' => array(
-                                array(
-                                    '_Name' => 'corto:sharedkey',
-                                    'saml:AttributeValue' => array(
-                                        array('__v' => 'abrakadabra'),
-                                    ),
-                                ),
-                            )
-                        ),
-                    ),
                     'md:IDPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',

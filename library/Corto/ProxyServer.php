@@ -107,29 +107,34 @@ class Corto_ProxyServer {
 
     public function getCurrentMD($f1, $f2 = null, $f3 = null, $default = null)
     {
-        if ($f3 && isset($this->_metadata['current'][$f1][$f2][$f3])) {
-            return $this->_metadata['current'][$f1][$f2][$f3];
-        }  elseif ($f2 && isset($this->_metadata['current'][$f1][$f2])) {
-            return $this->_metadata['current'][$f1][$f2];
-         } elseif (isset($this->_metadata['current'][$f1])) {
-            return $this->_metadata['current'][$f1];
-        } else {
-            return $default;
-        }
+        return $this->_getMD($this->_metadata['current'], $f1, $f2, $f3, $default);
     }
 
     public function getRemoteMD($id, $f1, $f2 = null, $f3 = null, $default = null)
     {
-        if ($f3 && isset($this->_metadata['remote'][$id][$f1][$f2][$f3])) {
-            return $this->_metadata['remote'][$id][$f1][$f2][$f3];
-        } elseif ($f2 && isset($this->_metadata['remote'][$id][$f1][$f2])) {
-            return $this->_metadata['remote'][$id][$f1][$f2];
-        } elseif (isset($this->_metadata['remote'][$id][$f1])) {
-            return $this->_metadata['remote'][$id][$f1];
-        } else {
-            return $default;
-        }
+        return $this->_getMD($this->_metadata['remote'][$id], $f1, $f2, $f3, $default);
     }
+
+    private function _getMD($md, $f1, $f2, $f3, $default = null)
+    {
+        if ($f3) {
+            $res = nvl3($md, $f1, $f2, $f3);
+        } elseif ($f2) {
+            $res = nvl2($md, $f1, $f2);
+        } else {
+            $res = nvl($md, $f1);
+        }
+        if (!$res) {
+            if ($default !== null) {
+                return $default;
+            } else {
+                throw new Corto_ProxyServer_Exception("Needed metadata not found: $f1/$f2/$f3 for entity: " . $md['entityID']);
+            }
+        }
+        return $res;
+
+    }
+
 
     public function selfUrl($entityid = null)
     {
@@ -325,7 +330,7 @@ class Corto_ProxyServer {
         #$_SESSION[$newId]['SAMLRequest'] = $request;
         $_SESSION[$newId]['_InResponseTo'] = $originalId;
 
-        $this->getBindingsModule()->send($newRequest, $this->_metadata['remote'][$idp]);
+        $this->getBindingsModule()->send($newRequest, $idp);
     }
 
     /**
@@ -338,8 +343,8 @@ class Corto_ProxyServer {
     public function createEnhancedRequest($originalRequest, $idp, array $scoping = null)
     {
         $remoteMetaData = $this->_metadata['remote'][$idp];
-        $ourMetaDAta = $this->_metadata['current'];
-        $defaultacs = $ourMetaDAta['SP']['AssertionConsumerService']['default'];
+        $ourMetaData = $this->_metadata['current'];
+        $defaultacs = $ourMetaData['SP']['AssertionConsumerService']['default'];
 
         $request = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'samlp:AuthnRequest',
@@ -359,8 +364,8 @@ class Corto_ProxyServer {
             '_IsPassive' => ($originalRequest['_IsPassive']) ? 'true' : 'false',
 
             // Send the response to us. We always use ACSURL as per sam2int.org
-            '_AssertionConsumerServiceURL' => $ourMetaDAta['SP']['AssertionConsumerService'][$defaultacs]['Location'],
-            '_ProtocolBinding' => $ourMetaDAta['SP']['AssertionConsumerService'][$defaultacs]['Binding'],
+            '_AssertionConsumerServiceURL' => $ourMetaData['SP']['AssertionConsumerService'][$defaultacs]['Location'],
+            '_ProtocolBinding' => $ourMetaData['SP']['AssertionConsumerService'][$defaultacs]['Binding'],
 
             '_AttributeConsumingServiceIndex' => $originalRequest['_AttributeConsumingServiceIndex'],
             'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
@@ -613,7 +618,7 @@ class Corto_ProxyServer {
 
         $request[$slorequestinfo['nameIDType']] = $slorequestinfo['nameID'];
         // only actually returns if soap call ...
-        $soapresponse = $this->getBindingsModule()->send($request, $this->_metadata['remote'][$entity]);
+        $soapresponse = $this->getBindingsModule()->send($request, $entity);
     }
 
     /**
@@ -873,17 +878,16 @@ class Corto_ProxyServer {
     {
         $requestIssuer = $request['saml:Issuer']['__v'];
         unset($_SESSION[$request['_ID']]);
-        $sp = $this->getRemoteEntity($requestIssuer);
 
         if ($response['samlp:Status']['samlp:StatusCode']['_Value'] == 'urn:oasis:names:tc:SAML:2.0:status:Success') {
 
             //			$this->filterOutputAssertionAttributes($response, $request);
             $this->saveSloInfo($response);
-            return $this->getBindingsModule()->send($response, $sp);
+            return $this->getBindingsModule()->send($response, $requestIssuer);
         }
         else {
             unset($response['saml:Assertion']);
-            return $this->getBindingsModule()->send($response, $sp);
+            return $this->getBindingsModule()->send($response, $requestIssuer);
         }
     }
 
@@ -964,7 +968,7 @@ class Corto_ProxyServer {
     {
         $this->getSessionLog()->debug("Redirecting to $location");
 
-        if ($this->getCurrentMD('debug', null, null, false)) {
+        if ($this->getCurrentMD('debug', null, null, true)) {
             $output = $this->renderTemplate('redirect', array('location' => $location, 'message' => $message));
             $this->sendOutput($output);
         } else {

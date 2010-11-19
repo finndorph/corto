@@ -30,7 +30,7 @@ function preparemetadataforbirk($metadatafile, $really = false)
                         '_entityID' => '_COMMON_',
                         'md:IDPSSODescriptor' => array(
                             array(
-                                '_WantAuthnRequestsSigned' => 'true',
+                               # '_WantAuthnRequestsSigned' => 'true',
                                 'md:Extensions' => array(
                                     'mdattr:EntityAttributes' => array(
                                         'saml:Attribute' => array(
@@ -245,68 +245,64 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
     );
 
     $meta->prepareMetadata($metadatasources, $metadatafile);
+    if (1) {
+        $md = eval(file_get_contents($metadatafile));
+        foreach ($md['federations']['testing'] as $id => $entity) {
+            #unset($entity['original']);
+            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
+                $entities[$id] = $entity;
+                continue;
+            } else {
+                $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
+                $newentity = $entity;
+                $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayf.wayf.dk', $id);
+                $newentity['entityID'] = $newid;
+                $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
 
-    $md = eval(file_get_contents($metadatafile));
-    foreach ($md['federations']['testing'] as $id => $entity) {
-        #unset($entity['original']);
-        if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
-            $entities[$id] = $entity;
-            continue;
-        } else {
-            $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
-            $entity['corto:sharedkey'] = array(
-                array('__v' => 'abrakadabra'),
-            );
-            $newentity = $entity;
-            $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayf.wayf.dk', $id);
-            $newentity['entityID'] = $newid;
-            $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
+                $asc = $sso . "/ACS";
+                $entity['SP']['AssertionConsumerService'] =
+                        array(
+                            array(
+                                'Location' => $asc,
+                                'Binding' => 'JSON-Redirect',
+                            ),
+                            'default' => 0,
+                        );
 
-            $asc = $sso . "/ACS";
-            $entity['SP'] = array(
-                'AssertionConsumerService' =>
-                array(
-                    1 =>
-                    array(
-                        'Location' => $asc,
-                        'Binding' => 'JSON-Redirect',
-                    ),
-                    'default' => 1,
-                ),
-            );
-
-            $lookuptablextra[$asc] = array(
-                'EntityID' => $id,
-                'Service' => 'AssertionConsumerService',
-                'Binding' => 'JSON-Redirect',
-            );
+                $lookuptablextra[$asc] = array(
+                    'EntityID' => $id,
+                    'Service' => 'AssertionConsumerService',
+                    'Binding' => 'JSON-Redirect',
+                );
 
 
-            $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
-            $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
+                $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
+                $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
 
-            $lookuptablextra[$sso] = array(
-                'EntityID' => $newid,
-                'Service' => 'SingleSignOnService',
-                'Binding' => 'JSON-Redirect',
-            );
+                $lookuptablextra[$sso] = array(
+                    'EntityID' => $newid,
+                    'Service' => 'SingleSignOnService',
+                    'Binding' => 'JSON-Redirect',
+                );
 
 
-            $entities[$newid] = $newentity;
+                $entities[$newid] = $newentity;
 
-            unset($entity['IDP']['corto:IDPList']);
-            $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
-            $entities[$id] = $entity;
+                unset($entity['IDP']['corto:IDPList']);
+                $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
+                $entities[$id] = $entity;
+            }
         }
-    }
-    print "#: " . count($entities);
-    $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
-    if ($really) {
-        file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
-        @rename($metadatafile . '.tmp', $metadatafile);
-        print "metadata written to: ";
-        system("ls -l $metadatafile");
-    } else {
-        print_r($export);
+
+        print "#: " . count($entities);
+        $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
+        if ($really) {
+            file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
+            @rename($metadatafile . '.tmp', $metadatafile);
+            print "metadata written to: ";
+            system("ls -l $metadatafile");
+        } else {
+            print_r($export);
+        }
     }
 }
