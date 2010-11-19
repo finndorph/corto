@@ -253,8 +253,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
     {
         $remoteEntity = $this->_verifyKnownIssuer($request);
 
-        if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'AuthnRequestsSigned') ||
-                ($this->_server->getCurrentMD('IDP', 'WantAuthnRequestsSigned'))) {
+        if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'AuthnRequestsSigned', null, false) ||
+                ($this->_server->getCurrentMD('IDP', 'WantAuthnRequestsSigned', null, false))) {
             $this->_verifySignature($request, self::SAMLRequest);
         }
 
