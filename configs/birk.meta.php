@@ -13,43 +13,7 @@ return array(
             'md:EntityDescriptor' => array(
                 array(
                     '_entityID' => '_HOSTED_/ude@evil',
-                    'md:Organization' =>
-                    array(
-                        'md:OrganizationName' =>
-                        array(
-                            array(
-                                '_xml:lang' => 'en',
-                                '__v' => 'ude@evil',
-                            ),
-                            array(
-                                '_xml:lang' => 'da',
-                                '__v' => 'ude@evil',
-                            ),
-                        ),
-                        'md:OrganizationDisplayName' =>
-                        array(
-                            array(
-                                '_xml:lang' => 'en',
-                                '__v' => 'Wayf - ude@evil',
-                            ),
-                            array(
-                                '_xml:lang' => 'da',
-                                '__v' => 'Wayf - ude@evil',
-                            ),
-                        ),
-                        'md:OrganizationURL' =>
-                        array(
-                            array(
-                                '_xml:lang' => 'en',
-                                '__v' => 'wayf.dk',
-                            ),
-                            array(
-                                '_xml:lang' => 'da',
-                                '__v' => 'wayf.dk',
-                            ),
-                        ),
-                    ),
-                    'md:Extensions' => array(
+                     'md:Extensions' => array(
                         'mdattr:EntityAttributes' => array(
                             'saml:Attribute' => array(
                                 array(
@@ -95,6 +59,42 @@ return array(
                 ),
                 array(
                     '_entityID' => '_HOSTED_/ude@evil-proxy',
+                    'md:Organization' =>
+                     array(
+                         'md:OrganizationName' =>
+                         array(
+                             array(
+                                 '_xml:lang' => 'en',
+                                 '__v' => 'ude@evil',
+                             ),
+                             array(
+                                 '_xml:lang' => 'da',
+                                 '__v' => 'ude@evil',
+                             ),
+                         ),
+                         'md:OrganizationDisplayName' =>
+                         array(
+                             array(
+                                 '_xml:lang' => 'en',
+                                 '__v' => 'Wayf - ude@evil',
+                             ),
+                             array(
+                                 '_xml:lang' => 'da',
+                                 '__v' => 'Wayf - ude@evil',
+                             ),
+                         ),
+                         'md:OrganizationURL' =>
+                         array(
+                             array(
+                                 '_xml:lang' => 'en',
+                                 '__v' => 'wayf.dk',
+                             ),
+                             array(
+                                 '_xml:lang' => 'da',
+                                 '__v' => 'wayf.dk',
+                             ),
+                         ),
+                     ),
                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
