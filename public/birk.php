@@ -147,7 +147,7 @@ pKQ+xQF7edbfGUNwK72pZ5Ag3Yq+GwFKV0lxJ1zFUsyo
     }
     $relayState = $rs = $message = null;
     $response = nvl($_GET, 'SAMLResponse');
-    $SAMLResponse = json_decode(gzinflate(base64_decode($response))), 1);
+    $SAMLResponse = json_decode(gzinflate(base64_decode($response)), 1);
 
     if (isset($_POST['RelayState']) && $rs = $_POST['RelayState']) {
         $rs = '&RelayState=' . $rs;
