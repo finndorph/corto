@@ -31,11 +31,11 @@ try {
     if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] == '/moc.elgoog-ACS' || $_SERVER['PATH_INFO'] == '/ude@evil-ACS') {
         $server->setMetadata($metadatafile);
         $idplist = $server->getAllowedIDPs('testing', true);
-
+        $proxyidps = array();
         foreach ($idplist as $ssoservice) {
-            if (preg_match("/\/proxy\//", $ssoservice)) {
+            #if (preg_match("/\/proxy\//", $ssoservice)) {
                 $proxyidps[] = $ssoservice;
-            }
+            #}
         }
 
         demoapp($proxyidps);
@@ -81,7 +81,7 @@ function demoapp($idplist)
 {
     $sharedkey = 'abrakadabra';
     $privatekey =
-"-----BEGIN RSA PRIVATE KEY-----
+            "-----BEGIN RSA PRIVATE KEY-----
 MIIEnQIBAAKCAQAA1H4O7YxF5wNnIACnSMISLmFtJACV7ued2LOVPfI/B109C1Iv
 XPx9qlMGZ7TbFZIWJXCw65SRfboS2wh3QZ8acrCwjtnOgrnMXRbPEr7jfm0vgQnn
 lzpZB0i4FkyFvyYzDSqcLTz9+xC7psHjA5umY+zaRa1prrvWoswKFszQsnjpi8Fm
@@ -108,7 +108,7 @@ gAP1d86vWz79QiNeNYhH2EuPCYZjNPreq2IUfToIJx02OA3qoZAv6HdyFRATdQ2i
 zcnEq7or8y9LAPmLqLfMWCnCDLS8nb+EsIO3xA03UDq0USAe+nnvwCJTQxgP8ypx
 pKQ+xQF7edbfGUNwK72pZ5Ag3Yq+GwFKV0lxJ1zFUsyo
 -----END RSA PRIVATE KEY-----";
-    
+
     $birk = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
 
     $self = $birk;
