@@ -229,7 +229,6 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
         ),
     );
 
-
     $metadatasources = array(
         'federations' => array(
             'testing' => array(
@@ -246,7 +245,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
     );
 
     $meta->prepareMetadata($metadatasources, $metadatafile);
-    if (0) {
+    if (1) {
         $md = eval(file_get_contents($metadatafile));
         foreach ($md['federations']['testing'] as $id => $entity) {
             #unset($entity['original']);
@@ -255,9 +254,14 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
                 continue;
             } else {
                 $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
+
+
                 $newentity = $entity;
-                $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayf.wayf.dk', $id);
+               # $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayfwayf.wayf.dk', $id);
+                $newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
+                $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/betawayf.wayf.dk', $id);
                 $newentity['entityID'] = $newid;
+                $lookuptablextra[$newid] = true;
                 $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
 
                 $asc = $sso . "/ACS";
@@ -291,7 +295,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
 
                 unset($entity['IDP']['corto:IDPList']);
                 $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
-                $entities[$id] = $entity;
+                #$entities[$id] = $entity;
             }
         }
 
@@ -300,11 +304,11 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
         if ($really) {
             file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
             @rename($metadatafile . '.tmp', $metadatafile);
-            print "metadata written to: ";
+            print " metadata written to: ";
             system("ls -l $metadatafile");
         } else {
             print_r($export);
         }
     }
-    system("ls -l $metadatafile");
+   # system("ls -l $metadatafile");
 }
