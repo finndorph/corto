@@ -266,15 +266,21 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
     $meta->prepareMetadata($metadatasources, $metadatafile);
     if (1) {
         $md = eval(file_get_contents($metadatafile));
-
+        $lookuptablextra = array();
         foreach ($md['federations']['testing'] as $id => $entity) {
             #unset($entity['original']);
             if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
                 $entities[$id] = $entity;
                 continue;
-            }
+            } else {
+                if (1) {
+                    $entity['IDP']['corto:IDPList'][0] = 'https://betawayf.wayf.dk';
+                    $entities[$id] = $entity;
+                    continue;
+                }
+                ;
 
-            else {
+
                 $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
 
 
