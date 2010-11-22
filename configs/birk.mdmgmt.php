@@ -275,10 +275,11 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
             } else {
                 if (1) {
                     $entity['IDP']['corto:IDPList'][0] = 'https://betawayf.wayf.dk';
+                    $entity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
                     $entities[$id] = $entity;
+                    $md['lookuptable']['testing'][$entity['IDP']['SingleSignOnService'][0]['Location']]['Binding'] = 'JSON-Redirect';
                     continue;
-                }
-                ;
+                };
 
 
                 $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
