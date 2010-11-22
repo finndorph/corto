@@ -229,6 +229,25 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
         ),
     );
 
+    $janusconfig = array(
+        'test' => array(
+            'md' => 'http://config.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=testaccepted&external=corto-test',
+            'wayf' = 'https://testidp.wayf.dk',
+        ),
+        'qa' => array(
+            'md' => 'http://config.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QAaccepted&external=corto-qa',
+            'wayf' = 'https://betawayf.wayf.dk',
+        ),
+        'prod' => array(
+            'md' => 'http://config.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto-prod',
+            'wayf' = 'https://wayf.wayf.dk',
+        ),
+    );
+
+
+    $testqaprod = 'qa';
+
+
     $metadatasources = array(
         'federations' => array(
             'testing' => array(
@@ -238,10 +257,8 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
                 'public' => array(
                     'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
                     'https://betawayf.wayf.dk/saml2/idp/metadata.php',
-                    #'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=testaccepted&external=corto-test',
-                    'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QAaccepted&external=corto-qa',
-                    #'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto-prod,
-                    ),
+                    $janusconfig['$tesqaprod']['md'],
+                ),
             ),
         ),
     );
@@ -249,70 +266,71 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
     $meta->prepareMetadata($metadatasources, $metadatafile);
     if (1) {
         $md = eval(file_get_contents($metadatafile));
+
         foreach ($md['federations']['testing'] as $id => $entity) {
             #unset($entity['original']);
-            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
+            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != $janusconfig['$tesqaprod']['wayf']) {
                 $entities[$id] = $entity;
                 continue;
-}
+            }
 
-else {
-    $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
+            else {
+                $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
 
 
-    $newentity = $entity;
-    # $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayfwayf.wayf.dk', $id);
-    $newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
-    $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/betawayf.wayf.dk', $id);
-    $newentity['entityID'] = $newid;
-    $lookuptablextra[$newid] = true;
-    $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
+                $newentity = $entity;
+                # $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayfwayf.wayf.dk', $id);
+                $newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
+                $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/betawayf.wayf.dk', $id);
+                $newentity['entityID'] = $newid;
+                $lookuptablextra[$newid] = true;
+                $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
 
-    $asc = $sso . "/ACS";
-    $entity['SP']['AssertionConsumerService'] =
-            array(
-                array(
-                    'Location' => $asc,
+                $asc = $sso . "/ACS";
+                $entity['SP']['AssertionConsumerService'] =
+                        array(
+                            array(
+                                'Location' => $asc,
+                                'Binding' => 'JSON-Redirect',
+                            ),
+                            'default' => 0,
+                        );
+
+                $lookuptablextra[$asc] = array(
+                    'EntityID' => $id,
+                    'Service' => 'AssertionConsumerService',
                     'Binding' => 'JSON-Redirect',
-                ),
-                'default' => 0,
-            );
-
-    $lookuptablextra[$asc] = array(
-        'EntityID' => $id,
-        'Service' => 'AssertionConsumerService',
-        'Binding' => 'JSON-Redirect',
-    );
+                );
 
 
-    $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
-    $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
+                $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
+                $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
 
-    $lookuptablextra[$sso] = array(
-        'EntityID' => $newid,
-        'Service' => 'SingleSignOnService',
-        'Binding' => 'JSON-Redirect',
-    );
+                $lookuptablextra[$sso] = array(
+                    'EntityID' => $newid,
+                    'Service' => 'SingleSignOnService',
+                    'Binding' => 'JSON-Redirect',
+                );
 
 
-    $entities[$newid] = $newentity;
+                $entities[$newid] = $newentity;
 
-    unset($entity['IDP']['corto:IDPList']);
-    $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
-#$entities[$id] = $entity;
-}
-}
+                unset($entity['IDP']['corto:IDPList']);
+                $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
+                #$entities[$id] = $entity;
+            }
+        }
 
-print "#: " . count($entities);
-$export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
-if ($really) {
-file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
-@rename($metadatafile . '.tmp', $metadatafile);
-print " metadata written to: ";
-system("ls -l $metadatafile");
-} else {
-print_r($export);
-}
-}
-# system("ls -l $metadatafile");
+        print "#: " . count($entities);
+        $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
+        if ($really) {
+            file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
+            @rename($metadatafile . '.tmp', $metadatafile);
+            print " metadata written to: ";
+            system("ls -l $metadatafile");
+        } else {
+            print_r($export);
+        }
+    }
+    # system("ls -l $metadatafile");
 }
