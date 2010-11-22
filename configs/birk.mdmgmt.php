@@ -269,7 +269,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
 
         foreach ($md['federations']['testing'] as $id => $entity) {
             #unset($entity['original']);
-            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != $janusconfig[$testqaprod]['wayf']) {
+            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
                 $entities[$id] = $entity;
                 continue;
             }
