@@ -238,8 +238,10 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
                 'public' => array(
                     'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
                     'https://betawayf.wayf.dk/saml2/idp/metadata.php',
-                    'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto',
-                ),
+                    #'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=testaccepted&external=corto-test',
+                    'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QAaccepted&external=corto-qa',
+                    #'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto-prod,
+                    ),
             ),
         ),
     );
@@ -252,63 +254,65 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
             if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
                 $entities[$id] = $entity;
                 continue;
-            } else {
-                $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
+}
+
+else {
+    $newid = preg_replace("/^(_HOSTED_)/", '$1/proxy', $id);
 
 
-                $newentity = $entity;
-               # $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayfwayf.wayf.dk', $id);
-                $newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
-                $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/betawayf.wayf.dk', $id);
-                $newentity['entityID'] = $newid;
-                $lookuptablextra[$newid] = true;
-                $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
+    $newentity = $entity;
+    # $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayfwayf.wayf.dk', $id);
+    $newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
+    $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/betawayf.wayf.dk', $id);
+    $newentity['entityID'] = $newid;
+    $lookuptablextra[$newid] = true;
+    $sso = nvl3($newentity['IDP'], 'SingleSignOnService', 0, 'Location');
 
-                $asc = $sso . "/ACS";
-                $entity['SP']['AssertionConsumerService'] =
-                        array(
-                            array(
-                                'Location' => $asc,
-                                'Binding' => 'JSON-Redirect',
-                            ),
-                            'default' => 0,
-                        );
-
-                $lookuptablextra[$asc] = array(
-                    'EntityID' => $id,
-                    'Service' => 'AssertionConsumerService',
+    $asc = $sso . "/ACS";
+    $entity['SP']['AssertionConsumerService'] =
+            array(
+                array(
+                    'Location' => $asc,
                     'Binding' => 'JSON-Redirect',
-                );
+                ),
+                'default' => 0,
+            );
+
+    $lookuptablextra[$asc] = array(
+        'EntityID' => $id,
+        'Service' => 'AssertionConsumerService',
+        'Binding' => 'JSON-Redirect',
+    );
 
 
-                $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
-                $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
+    $sso = preg_replace("/^(_HOSTED_)/", '$1/proxy', $sso);
+    $newentity['IDP']['SingleSignOnService'][0]['Location'] = $sso;
 
-                $lookuptablextra[$sso] = array(
-                    'EntityID' => $newid,
-                    'Service' => 'SingleSignOnService',
-                    'Binding' => 'JSON-Redirect',
-                );
+    $lookuptablextra[$sso] = array(
+        'EntityID' => $newid,
+        'Service' => 'SingleSignOnService',
+        'Binding' => 'JSON-Redirect',
+    );
 
 
-                $entities[$newid] = $newentity;
+    $entities[$newid] = $newentity;
 
-                unset($entity['IDP']['corto:IDPList']);
-                $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
-                #$entities[$id] = $entity;
-            }
-        }
+    unset($entity['IDP']['corto:IDPList']);
+    $entity['IDP']['corto:IDPList'][0] = '_COHOSTED_/null.php';
+#$entities[$id] = $entity;
+}
+}
 
-        print "#: " . count($entities);
-        $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
-        if ($really) {
-            file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
-            @rename($metadatafile . '.tmp', $metadatafile);
-            print " metadata written to: ";
-            system("ls -l $metadatafile");
-        } else {
-            print_r($export);
-        }
-    }
-   # system("ls -l $metadatafile");
+print "#: " . count($entities);
+$export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
+if ($really) {
+file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
+@rename($metadatafile . '.tmp', $metadatafile);
+print " metadata written to: ";
+system("ls -l $metadatafile");
+} else {
+print_r($export);
+}
+}
+# system("ls -l $metadatafile");
 }

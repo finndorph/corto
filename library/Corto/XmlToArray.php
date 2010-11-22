@@ -141,10 +141,11 @@ class Corto_XmlToArray {
             throw new Corto_XmlToArray_Exception(
                 'Error parsing incoming XML. ' . PHP_EOL .
                         'Error code: ' . xml_error_string(xml_get_error_code($parser)) . PHP_EOL .
+                        'Line: ' .       xml_get_current_line_number($parser) . PHP_EOL .
                         'XML: ' . $xml);
         }
         xml_parser_free($parser);
-        self::$_singulars = array_fill_keys(self::$_singulars_list, 1);
+       # self::$_singulars = array_fill_keys(self::$_singulars_list, 1);
         $return = self::_xml2array($values);
         if ($topleveltag) return array($return[0]['__t'] => array($return[0]));
         return $return[0];

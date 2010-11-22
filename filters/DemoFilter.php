@@ -1,11 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: freek
- * Date: Oct 11, 2010
- * Time: 11:23:09 PM
- * To change this template use File | Settings | File Templates.
- */
 
 class StdSingleLogonService {
 
@@ -15,7 +8,6 @@ class StdSingleLogonService {
         $server = $_POST['cortodata']['server'];
         $params = $_POST['cortodata']['params'];
 
-
         // If we configured an IDPList in metadata this is our primary scoping
         $scopedIDPs = $server->getPresetIDPs();
 
@@ -23,7 +15,6 @@ class StdSingleLogonService {
          * Add scoping in request to configured scoping - this is NOT according to the spec
          * which says that you MUST append to a received IDPList
          */
-        
         foreach ((array) nvl3($request, 'samlp:Scoping', 'samlp:IDPList', 'samlp:IDPEntry') as $IDPEntry) {
             $scopedIDPs[] = $IDPEntry['_ProviderID'];
         }
@@ -34,8 +25,8 @@ class StdSingleLogonService {
         foreach ((array) nvl2($request, 'samlp:Scoping', 'samlp:RequesterID') as $requesterID) {
             $requesterIDs[] = $requesterID['__v'];
         }
-        // remove issuer + us from scope for use now ..
 
+        // remove issuer + us from scope for use now ..
         $relevantScopedIDPs = array_diff($scopedIDPs, $requesterIDs);
 
         // Get all registered Single Sign On Services
@@ -51,7 +42,6 @@ class StdSingleLogonService {
 
         // No IdPs found! Send an error response back.
         if (empty($candidateIDPs)) {
-            $server->getSessionLog()->debug("SSO: No Supported Idps!");
             $response = $server->createErrorResponse($request, 'NoSupportedIDP');
             return $server->sendResponseToRequestIssuer($request, $response);
         }
@@ -59,7 +49,6 @@ class StdSingleLogonService {
         // 1+ non-scoped IdPs found, but isPassive attribute given, unable to continue
         // NO call wayf first it might have an idea ...
         if (nvl($request, '_IsPassive')) {
-            $server->getSessionLog()->debug("SSO: IsPassive with multiple IdPs!");
             $response = $server->createErrorResponse($request, 'NoPassive');
             return $server->sendResponseToRequestIssuer($request, $response);
         }
