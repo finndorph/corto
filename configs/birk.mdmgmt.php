@@ -231,21 +231,21 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
 
     $janusconfig = array(
         'test' => array(
-            'md' => 'http://config.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=testaccepted&external=corto-test',
-            'wayf' = 'https://testidp.wayf.dk',
+            'md' => 'https://config.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=testaccepted&external=corto-test',
+            'wayf' => 'https://testidp.wayf.dk',
         ),
         'qa' => array(
-            'md' => 'http://config.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QAaccepted&external=corto-qa',
-            'wayf' = 'https://betawayf.wayf.dk',
+            'md' => 'https://config.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QAaccepted&external=corto-qa',
+            'wayf' => 'https://betawayf.wayf.dk',
         ),
         'prod' => array(
-            'md' => 'http://config.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto-prod',
-            'wayf' = 'https://wayf.wayf.dk',
+            'md' => 'https://config.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto-prod',
+            'wayf' => 'https://wayf.wayf.dk',
         ),
     );
 
 
-    $testqaprod = 'qa';
+    $testqaprod = 'prod';
 
 
     $metadatasources = array(
@@ -257,7 +257,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
                 'public' => array(
                     'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
                     'https://betawayf.wayf.dk/saml2/idp/metadata.php',
-                    $janusconfig['$tesqaprod']['md'],
+                    dirname(__FILE__) . '/wayf.prod.md.xml',
                 ),
             ),
         ),
@@ -269,7 +269,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
 
         foreach ($md['federations']['testing'] as $id => $entity) {
             #unset($entity['original']);
-            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != $janusconfig['$tesqaprod']['wayf']) {
+            if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != $janusconfig[$testqaprod]['wayf']) {
                 $entities[$id] = $entity;
                 continue;
             }

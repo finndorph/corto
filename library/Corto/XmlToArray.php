@@ -145,7 +145,7 @@ class Corto_XmlToArray {
                         'XML: ' . $xml);
         }
         xml_parser_free($parser);
-       # self::$_singulars = array_fill_keys(self::$_singulars_list, 1);
+        self::$_singulars = array_fill_keys(self::$_singulars_list, 1);
         $return = self::_xml2array($values);
         if ($topleveltag) return array($return[0]['__t'] => array($return[0]));
         return $return[0];
@@ -198,8 +198,11 @@ class Corto_XmlToArray {
                 }
             }
             $complete = array();
-            if (preg_match("/^(.+):(.+)$/", $tagName, $namespacePrefixAndTag) && $prefix = $namespaceMapping[$namespacePrefixAndTag[1]]) {
-                $tagName = $prefix . ":" . $namespacePrefixAndTag[2];
+            if (preg_match("/^(.+):(.+)$/", $tagName, $namespacePrefixAndTag)){
+                if (!isset($namespaceMapping[$namespacePrefixAndTag[1]])) {
+                    throw new Exception('No namespace defined for: ' . $tagName . ' currently defined are: ' . print_r($namespaceMapping, 1));
+                }
+                $tagName = $namespaceMapping[$namespacePrefixAndTag[1]] . ":" . $namespacePrefixAndTag[2];
             } else {
                 $tagName = $defaultNs . ":" . $tagName;
             }
