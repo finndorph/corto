@@ -39,7 +39,7 @@ return array(
                     ),
                 ),
                 array(
-                    '_entityID' => '_HOSTED_ / google . com - proxy',
+                    '_entityID' => '_HOSTED_/google.com-proxy',
                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',

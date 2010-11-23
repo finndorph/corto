@@ -367,7 +367,7 @@ class Corto_ProxyServer {
             '_AssertionConsumerServiceURL' => $ourMetaData['SP']['AssertionConsumerService'][$defaultacs]['Location'],
             '_ProtocolBinding' => $ourMetaData['SP']['AssertionConsumerService'][$defaultacs]['Binding'],
 
-            '_AttributeConsumingServiceIndex' => $originalRequest['_AttributeConsumingServiceIndex'],
+            '_AttributeConsumingServiceIndex' => nvl($originalRequest, '_AttributeConsumingServiceIndex'),
             'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
             'ds:Signature' => '__placeholder__',
             'samlp:NameIDPolicy' => array(

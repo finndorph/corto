@@ -275,9 +275,9 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
             } else {
                 if (1) {
                     $entity['IDP']['corto:IDPList'][0] = 'https://betawayf.wayf.dk';
-                    $entity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
+                    #$entity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
                     $entities[$id] = $entity;
-                    $md['lookuptable']['testing'][$entity['IDP']['SingleSignOnService'][0]['Location']]['Binding'] = 'JSON-Redirect';
+                    #$md['lookuptable']['testing'][$entity['IDP']['SingleSignOnService'][0]['Location']]['Binding'] = 'JSON-Redirect';
                     continue;
                 };
 
@@ -287,7 +287,7 @@ U+dHTCEN7RIICgnwR6/dPs9mowgEWfFCgoOyS8M+ad1NL0rfgtB0osY0HUvZHg==
 
                 $newentity = $entity;
                 # $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/wayfwayf.wayf.dk', $id);
-                $newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
+                #$newentity['IDP']['SingleSignOnService'][0]['Binding'] = 'JSON-Redirect';
                 $newentity['IDP']['corto:IDPList'] = array('_HOSTED_/betawayf.wayf.dk', $id);
                 $newentity['entityID'] = $newid;
                 $lookuptablextra[$newid] = true;

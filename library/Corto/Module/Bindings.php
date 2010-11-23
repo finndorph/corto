@@ -80,6 +80,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
             $this->_server->getSessionLog()->debug("Received request: " . var_export($request, true));
         }
         $request['__']['Binding'] = $params['Binding'];
+        #print_r($request);
         $this->_verifyRequest($request);
 
         return $request;
