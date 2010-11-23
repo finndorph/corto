@@ -753,8 +753,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
             $privatekey = $this->_server->getCurrentMD('SP', 'signing', 'X509Privatekey');
             $message = $this->_sign($privatekey, $message);
         } elseif ($name == 'samlp:Response') {
-            $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
             if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantAssertionsSigned', null, false)) {
+                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
                 $message['saml:Assertion']['__t'] = 'saml:Assertion';
                 $message['saml:Assertion']['_xmlns:saml'] = "urn:oasis:names:tc:SAML:2.0:assertion";
                 ksort($message['saml:Assertion']);
@@ -763,6 +763,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 ksort($message['saml:Assertion']);
             }
             if ($name == 'samlp:Response' && nvl($remoteEntity, 'WantResponsesSigned')) {
+                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
                 $message = $this->_sign($privatekey, $message);
             }
         }
