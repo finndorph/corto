@@ -762,7 +762,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 $message['saml:Assertion'] = $this->_sign($privatekey, $message['saml:Assertion']);
                 ksort($message['saml:Assertion']);
             }
-            if ($name == 'samlp:Response' && nvl($remoteEntity, 'WantResponsesSigned')) {
+            if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantResponsesSigned')) {
                 $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
                 $message = $this->_sign($privatekey, $message);
             }
