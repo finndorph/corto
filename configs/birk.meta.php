@@ -12,8 +12,50 @@ return array(
             '_xmlns:mdattr' => 'urn:oasis:names:tc:SAML:metadata:attribute',
             'md:EntityDescriptor' => array(
                 array(
+                    '_entityID' => 'google.com',
+                    'md:SPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:AssertionConsumerService' => array(
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => 'https://www.google.com/a/g.wayf.dk/acs',
+                                    '_index' => 1,
+                                ),
+                            ),
+                            'md:Extensions' => array(
+                                'mdattr:EntityAttributes' => array(
+                                    'saml:Attribute' => array(
+                                        array(
+                                            '_Name' => 'corto:proxySP',
+                                            'saml:AttributeValue' => array(
+                                                array('__v' => '_HOSTED_/google.com-proxy'),
+                                            ),
+                                        ),
+                                    )
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                array(
+                    '_entityID' => '_HOSTED_ / google . com - proxy',
+                    'md:SPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:AssertionConsumerService' => array(
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => '_HOSTED_/www.google.com/a/g.wayf.dk/acs',
+                                    '_index' => 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                array(
                     '_entityID' => '_HOSTED_/ude@evil',
-                     'md:Extensions' => array(
+                    'md:Extensions' => array(
                         'mdattr:EntityAttributes' => array(
                             'saml:Attribute' => array(
                                 array(
@@ -60,41 +102,41 @@ return array(
                 array(
                     '_entityID' => '_HOSTED_/ude@evil-proxy',
                     'md:Organization' =>
-                     array(
-                         'md:OrganizationName' =>
-                         array(
-                             array(
-                                 '_xml:lang' => 'en',
-                                 '__v' => 'ude@evil',
-                             ),
-                             array(
-                                 '_xml:lang' => 'da',
-                                 '__v' => 'ude@evil',
-                             ),
-                         ),
-                         'md:OrganizationDisplayName' =>
-                         array(
-                             array(
-                                 '_xml:lang' => 'en',
-                                 '__v' => 'Wayf - ude@evil',
-                             ),
-                             array(
-                                 '_xml:lang' => 'da',
-                                 '__v' => 'Wayf - ude@evil',
-                             ),
-                         ),
-                         'md:OrganizationURL' =>
-                         array(
-                             array(
-                                 '_xml:lang' => 'en',
-                                 '__v' => 'wayf.dk',
-                             ),
-                             array(
-                                 '_xml:lang' => 'da',
-                                 '__v' => 'wayf.dk',
-                             ),
-                         ),
-                     ),
+                    array(
+                        'md:OrganizationName' =>
+                        array(
+                            array(
+                                '_xml:lang' => 'en',
+                                '__v' => 'ude@evil',
+                            ),
+                            array(
+                                '_xml:lang' => 'da',
+                                '__v' => 'ude@evil',
+                            ),
+                        ),
+                        'md:OrganizationDisplayName' =>
+                        array(
+                            array(
+                                '_xml:lang' => 'en',
+                                '__v' => 'Wayf - ude@evil',
+                            ),
+                            array(
+                                '_xml:lang' => 'da',
+                                '__v' => 'Wayf - ude@evil',
+                            ),
+                        ),
+                        'md:OrganizationURL' =>
+                        array(
+                            array(
+                                '_xml:lang' => 'en',
+                                '__v' => 'wayf.dk',
+                            ),
+                            array(
+                                '_xml:lang' => 'da',
+                                '__v' => 'wayf.dk',
+                            ),
+                        ),
+                    ),
                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
