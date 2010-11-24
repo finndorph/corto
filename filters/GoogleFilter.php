@@ -15,7 +15,7 @@ class GoogleFilter {
         $assertion = &$params['cortodata']['response']['saml:Assertion'];
         $samlattribute = $assertion['saml:AttributeStatement'][0]['saml:Attribute'];
         $attributes = attributes2array($samlattribute);
-        $mail = 'freek'; #@g.wayf.dk'; #$attributes['uid'][0] . '@g.wayf.dk';
+        $mail = 'anton'; #@g.wayf.dk'; #$attributes['uid'][0] . '@g.wayf.dk';
         $assertion['_ID'] = "z" . sha1(uniqid(mt_rand(), true));
         unset($assertion['saml:AttributeStatement']);
         unset($assertion['ds:Signature']);
