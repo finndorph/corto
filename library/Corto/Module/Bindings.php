@@ -82,7 +82,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $request['__']['Binding'] = $params['Binding'];
         #print_r($request);
         $this->_verifyRequest($request);
-
         return $request;
     }
 
@@ -720,7 +719,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
 
             $privatekey = $this->_server->getCurrentMD('SP', 'signing', 'X509Privatekey');
 
-            $key = openssl_pkey_get_private(self::RSAPKeyBegin . $privatekey . self::RSAPKeyEnd);
+            $key = openssl_pkey_get_private(self::RSAPKeyBegin . chunk_split($privatekey, 64) . self::RSAPKeyEnd);
 
             $signature = "";
             openssl_sign($queryString, $signature, $key, OPENSSL_ALGO_SHA1);
@@ -746,6 +745,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
      */
     protected function _sendHTTPPOST($message, $remoteEntity)
     {
+       # print_r($message);;
         $name = $message['__t'];
         if ($name == 'samlp:AuthnRequest'
                 && ($this->_server->getRemoteMD($remoteEntity, 'IDP', 'WantAuthnRequestsSigned', null, false)
@@ -755,20 +755,24 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         } elseif ($name == 'samlp:Response') {
             if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantAssertionsSigned', null, false)) {
                 $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
+                $certificate = $this->_server->getCurrentMD('IDP', 'signing', 'X509Certificate');
                 $message['saml:Assertion']['__t'] = 'saml:Assertion';
                 $message['saml:Assertion']['_xmlns:saml'] = "urn:oasis:names:tc:SAML:2.0:assertion";
                 ksort($message['saml:Assertion']);
 
-                $message['saml:Assertion'] = $this->_sign($privatekey, $message['saml:Assertion']);
+                $message['saml:Assertion'] = $this->_sign($privatekey, $certificate, $message['saml:Assertion']);
                 ksort($message['saml:Assertion']);
             }
-            if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantResponsesSigned')) {
+            if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantResponsesSigned', null, false)) {
                 $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
-                $message = $this->_sign($privatekey, $message);
+                $certificate = $this->_server->getCurrentMD('IDP', 'signing', 'X509Certificate');
+                $message = $this->_sign($privatekey, $certificate, $message);
             }
         }
+        #print_r($message); exit;
 
         $encodedMessage = Corto_XmlToArray::array2xml($message);
+        #print_r($encodedMessage); exit;
         if ($this->_server->getCurrentMD('debug', null, null, false)) {
             $dom = new DOMDocument();
             $dom->loadXML($encodedMessage);
@@ -776,7 +780,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 //echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($encodedMessage)).'</pre>';
                 //throw new Exception('Message XML doesnt validate against XSD at Oasis-open.org?!');
             } else if ($name == 'SAMLResponse' && isset($remoteEntity['WantsResponsesSigned']) && $remoteEntity['WantsResponsesSigned']) {
-                $message = $this->_sign($this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey'), $message);
+                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
+                $certificate = $this->_server->getCurrentMD('IDP', 'signing', 'X509Certificate');
+                $message = $this->_sign($privatekey, $certificate, $message);
             }
 
             $encodedMessage = Corto_XmlToArray::array2xml($message);
@@ -893,7 +899,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
      * @param  $element
      * @return
      */
-    protected function _sign($privatekey, $element)
+    protected function _sign($privatekey, $certificate, $element)
     {
         $signature = array(
             '__t' => 'ds:Signature',
@@ -936,14 +942,21 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
 
         $canonicalXml2 = DOMDocument::loadXML(Corto_XmlToArray::array2xml($signature['ds:SignedInfo']))->firstChild->C14N(true, false);
 
-        $key = openssl_pkey_get_private(self::RSAPKeyBegin . $privatekey . self::RSAPKeyEnd);
+        $key = openssl_pkey_get_private(self::RSAPKeyBegin . chunk_split($privatekey, 64) . self::RSAPKeyEnd);
 
         openssl_sign($canonicalXml2, $signatureValue, $key);
 
         openssl_free_key($key);
         $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
+        $signature['ds:KeyInfo']['ds:X509Data']['ds:X509Certificate']['__v'] = $certificate;
         $element['ds:Signature'] = $signature;
-        return $element;
+        foreach($element as $tag => $item) {
+            if ($tag == 'ds:Signature') continue;
+            $newelement[$tag] = $item;
+            if ($tag == 'saml:Issuer') $newelement['ds:Signature'] = $signature;
+        }
+        #print_r($newelement); exit;
+        return $newelement;
     }
 
 }

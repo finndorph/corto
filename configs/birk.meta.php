@@ -15,6 +15,10 @@ return array(
                     '_entityID' => 'google.com',
                     'md:SPSSODescriptor' => array(
                         array(
+                            '_AuthnRequestsSigned' => 'false',
+                            '_WantResponsesSigned' => 'true',
+                            '_WantAssertionsSigned' => 'false',
+
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                             'md:AssertionConsumerService' => array(
                                 array(
@@ -30,6 +34,12 @@ return array(
                                             '_Name' => 'corto:proxySP',
                                             'saml:AttributeValue' => array(
                                                 array('__v' => '_HOSTED_/google.com-proxy'),
+                                            ),
+                                        ),
+                                        array(
+                                            '_Name' => 'corto:responseOutputFilter',
+                                            'saml:AttributeValue' => array(
+                                                'GoogleFilter::google',
                                             ),
                                         ),
                                     )

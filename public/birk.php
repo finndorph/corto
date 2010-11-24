@@ -22,6 +22,7 @@ try {
     require '../library/Corto/ProxyServer.php';
     $server = new Corto_ProxyServer();
     require '../filters/DemoFilter.php';
+    require '../filters/GoogleFilter.php';
 
 /*
  * If called without path - use demo.php

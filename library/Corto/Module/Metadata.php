@@ -14,7 +14,7 @@ class Corto_Module_Metadata {
 
     protected static $descriptors = array('SP', 'IDP');
     protected static $services = array('AssertionConsumerService', 'ArtifactResolutionService', 'SingleSignOnService', 'SingleLogoutService');
-    protected static $signings = array('WantAuthnRequestsSigned', 'WantAssertionsSigned', 'AuthnRequestsSigned');
+    protected static $signings = array('WantAuthnRequestsSigned', 'WantAssertionsSigned', 'AuthnRequestsSigned', 'WantResponsesSigned');
 
     public function prepareMetadata($metadatasources, $metadatafile)
     {

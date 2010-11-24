@@ -54,9 +54,9 @@ class Corto_Module_Services extends Corto_Module_Abstract {
              */
 
             if (nvl2($request, 'samlp:Scoping', '_ProxyCount') === 0) {
-                $server->getSessionLog()->debug("SSO: Proxy count exceeded!");
-                $response = $server->createErrorResponse($request, 'ProxyCountExceeded');
-                return $server->sendResponseToRequestIssuer($request, $response);
+                $this->_server->getSessionLog()->debug("SSO: Proxy count exceeded!");
+                $response = $this->_server->createErrorResponse($request, 'ProxyCountExceeded');
+                return $this->_server->sendResponseToRequestIssuer($request, $response);
             }
 
             $filterparams = array(
@@ -65,7 +65,7 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 'server' => $this->_server,
             );
             $state = 'abc';
-            $demofilters = array(array('php' => 'StdSingleLogonService::sso'));
+            $demofilters = array('StdSingleLogonService::sso');
         }
 
         if (dorequestfilter($state, $demofilters, $filterparams)) {
@@ -141,16 +141,16 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             $state = get_defined_vars();
             $filterparams = array('request' => $receivedRequest,
                                   'response' => $receivedResponse);
+            $filters = $this->_server->getRemoteMD($receivedRequest['saml:Issuer']['__v'], 'SP', 'corto:responseOutputFilter');
         }
 
         // IDP side filters
 
-        if (doresponseoutputfilters($state, $demofilters, $filterparams)) {
+        if (doresponseoutputfilters($state, $filters, $filterparams)) {
             extract($state);
             unset($state);
             $receivedResponse = $filterparams['response'];
             unset($filterparams);
-
             return $this->_server->sendResponseToRequestIssuer($receivedRequest, $receivedResponse);
         }
     }

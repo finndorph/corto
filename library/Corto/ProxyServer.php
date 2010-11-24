@@ -369,7 +369,6 @@ class Corto_ProxyServer {
 
             '_AttributeConsumingServiceIndex' => nvl($originalRequest, '_AttributeConsumingServiceIndex'),
             'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
-            'ds:Signature' => '__placeholder__',
             'samlp:NameIDPolicy' => array(
                 '_Format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
                 '_AllowCreate' => 'true',
@@ -752,7 +751,6 @@ class Corto_ProxyServer {
             '_IssueInstant' => $response['_IssueInstant'],
 
             'saml:Issuer' => array('__v' => $response['saml:Issuer']['__v']),
-            'ds:Signature' => '__placeholder__',
             'saml:Subject' => array(
                 'saml:NameID' => array(
                     '_SPNameQualifier' => $this->getCurrentMD('entityID'),
@@ -1005,7 +1003,7 @@ class Corto_ProxyServer {
 
     public function getNewId()
     {
-        return sha1(uniqid(mt_rand(), true));
+        return "z".sha1(uniqid(mt_rand(), true));
     }
 
     /**

@@ -301,7 +301,8 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
     $_POST['cortofirstcall'] = $cortofirstcall;
     $_POST['cortolocation'] = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://'
             . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    if ($thefilter = nvl($filter, 'url')) {
+
+     if ($thefilter = nvl($filter, 'type') == 'url') {
         $_POST['cortotoken'] = $filter['token'];
         $_POST['cortoreturn'] = 'json';
 
@@ -333,11 +334,9 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
             print_r($http_response_header);
             exit;
         }
-    } elseif ($thefilter = nvl($filter, 'php')) {
-        $_POST['cortoreturn'] = 'array';
-        return call_user_func($thefilter, $_POST);
     } else {
-        // exception ...
+        $_POST['cortoreturn'] = 'array';
+        return call_user_func($filter, $_POST);
     }
 }
 
