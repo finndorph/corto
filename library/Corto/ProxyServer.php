@@ -966,7 +966,7 @@ class Corto_ProxyServer {
     {
         $this->getSessionLog()->debug("Redirecting to $location");
 
-        if ($this->getCurrentMD('debug', null, null, true)) {
+        if ($this->getCurrentMD('debug', null, null, false)) {
             $output = $this->renderTemplate('redirect', array('location' => $location, 'message' => $message));
             $this->sendOutput($output);
         } else {
