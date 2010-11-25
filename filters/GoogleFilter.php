@@ -16,7 +16,7 @@ class GoogleFilter {
         $samlattribute = $assertion['saml:AttributeStatement'][0]['saml:Attribute'];
         $attributes = attributes2array($samlattribute);
         $mail = 'anton'; #@g.wayf.dk'; #$attributes['uid'][0] . '@g.wayf.dk';
-        $assertion['_ID'] = "z" . sha1(uniqid(mt_rand(), true));
+
         unset($assertion['saml:AttributeStatement']);
         unset($assertion['ds:Signature']);
         unset($assertion['saml:AuthnStatement']['saml:AuthnContext']['saml:AuthenticatingAuthority']);

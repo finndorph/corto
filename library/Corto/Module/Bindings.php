@@ -811,7 +811,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 'name' => $message['__']['paramname'],
                 #                'trace' => $this->_server->getConfig('debug', false) ? htmlentities(Corto_XmlToArray::formatXml(Corto_XmlToArray::array2xml($message))) : '',
                 #                'trace' => htmlentities(Corto_XmlToArray::formatXml(Corto_XmlToArray::array2xml($message))),
-                'trace' => htmlentities(print_r($message, 1)),
+                #'trace' => htmlentities(print_r($message, 1)),
                 # 'trace' => true,
             ));
         $this->_server->sendOutput($output);
