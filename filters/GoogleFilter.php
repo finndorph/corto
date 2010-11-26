@@ -15,7 +15,10 @@ class GoogleFilter {
         $assertion = &$params['cortodata']['response']['saml:Assertion'];
         $samlattribute = $assertion['saml:AttributeStatement'][0]['saml:Attribute'];
         $attributes = attributes2array($samlattribute);
-        $mail = 'anton'; #@g.wayf.dk'; #$attributes['uid'][0] . '@g.wayf.dk';
+        $dollar = array();
+        preg_match("/^(.*)@/", $attributes['eduPersonPrincipalName'][0], $dollar);
+
+        $mail = $dollar[1]; # . '@g.wayf.dk';
 
         unset($assertion['saml:AttributeStatement']);
         unset($assertion['ds:Signature']);

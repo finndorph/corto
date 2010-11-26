@@ -26,6 +26,11 @@ return array(
                                     '_Location' => 'https://www.google.com/a/g.wayf.dk/acs',
                                     '_index' => 1,
                                 ),
+                                array(
+                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                     '_Location' => 'https://www.google.com/a/email.ruc.dk/acs',
+                                     '_index' => 2,
+                                 ),
                             ),
                             'md:Extensions' => array(
                                 'mdattr:EntityAttributes' => array(
@@ -55,11 +60,11 @@ return array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                             'md:AssertionConsumerService' => array(
                                 array(
-                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-                                    '_Location' => '_HOSTED_/www.google.com/a/g.wayf.dk/acs',
-                                    '_index' => 1,
-                                ),
-                            ),
+                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                     '_Location' => '_HOSTED_/www.google.com/a/g.wayf.dk/acs',
+                                     '_index' => 1,
+                                 ),
+                             ),
                         ),
                     ),
                 ),
