@@ -114,7 +114,7 @@ function nvl3($array, $index, $index2, $index3, $default = null)
 
 function ID()
 {
-    return sha1(uniqid(mt_rand(), true));
+    return '_'.sha1(uniqid(mt_rand(), true));
 }
 
 ;
@@ -249,7 +249,7 @@ function handlefilters($phase, &$state = null, &$filters = null, &$data = null)
     $fileline = sha1($dbt[1]['file'] . $dbt[1]['line']);
 
     if (empty($cortopassthru)) {
-        $cortopassthru = sha1(uniqid(mt_rand(), true));
+        $cortopassthru = ID();
     }
     if (empty($_SESSION['corto_filter'][$cortopassthru])) {
         $_SESSION['corto_filter'][$cortopassthru]['i'] = 0;
@@ -335,6 +335,7 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
             exit;
         }
     } else {
+         debug('filter', $filter);
         $_POST['cortoreturn'] = 'array';
         return call_user_func($filter, $_POST);
     }

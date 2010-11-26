@@ -41,7 +41,7 @@ try {
                     # json: ...
                     # xml: ... default
                     'php:' . dirname(__FILE__) . '/../configs/cortotest.meta.php',
-                    'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&mimetype=--+Please+select+MIME+type+--&external=corto',
+                    #'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&mimetype=--+Please+select+MIME+type+--&external=corto',
                 ),
             ),
         ),
@@ -49,7 +49,7 @@ try {
 
     $metadatafile = '/var/tmp/corto_optimized_metadata.php';
 
-    #$meta->prepareMetadata($metadatasources, $metadatafile);
+    $meta->prepareMetadata($metadatasources, $metadatafile);
 
     $server->setMetadata($metadatafile);
 

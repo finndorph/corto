@@ -66,6 +66,34 @@ class StdSingleLogonService {
 
 class DemoFilterClass {
 
+    static function democonsent($params)
+    {
+        $server = $params['cortodata']['server'];
+        if ($params['cortofirstcall']) {
+            $response = $params['cortodata']['response'];
+
+            $attributes = attributes2array(
+                $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
+            );
+
+            print $server->renderTemplate(
+                'consent',
+                array(
+                    'action' => $params['cortolocation'],
+                    'ID' => $response['_ID'],
+                    'attributes' => $attributes,
+                    'cortopassthru' => $params['cortopassthru'],
+                ));
+            exit;
+        }
+        if (nvl($_POST, 'consent') !== 'yes') {
+            print $server->renderTemplate('noconsent');
+            exit;
+        }
+        return $params['cortodata'];
+    }
+
+
     static function demofilter()
     {
         if ($_POST['cortoreturn'] == 'json') {

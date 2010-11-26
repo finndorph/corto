@@ -1003,7 +1003,7 @@ class Corto_ProxyServer {
 
     public function getNewId()
     {
-        return "z".sha1(uniqid(mt_rand(), true));
+        return ID();
     }
 
     /**

@@ -15,7 +15,7 @@ function demoapp()
     if (isset($_POST['doslo'])) {
         $request = array(
             '__t' => 'samlp:LogoutRequest',
-            '_ID' => sha1(uniqid(mt_rand(), true)),
+            '_ID' => ID(),
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
             '_Destination' => "$corto/sp/Mads/SLO",
@@ -24,7 +24,7 @@ function demoapp()
             '_NotOnOrAfter' => timeStamp(10),
         );
         $location = $request['_Destination'];
-        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(encrypt(json_encode($request), $sharedkey))));
+        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(json_encode($request))));
         print render('redirect', array('location' => $location, 'message' => $request));
         exit;
 
@@ -35,7 +35,7 @@ function demoapp()
             $idp = "sp";
         }
         $request = array(
-            '_ID' => sha1(uniqid(mt_rand(), true)),
+            '_ID' => ID(),
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
             '_Destination' => "$corto/$idp/Mads",
@@ -58,14 +58,14 @@ function demoapp()
         $relayState = 'Dummy RelayState ...';
         #$request['samlp:Scoping']['_ProxyCount'] = 2;
         $location = $request['_Destination'];
-        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(encrypt(json_encode($request), $sharedkey))))
+        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(json_encode($request))))
                 . ($relayState ? '&RelayState=' . urlencode($relayState) : '');
         print render('redirect', array('location' => $location, 'message' => $request));
         exit;
     }
     $relayState = $rs = $message = null;
     $response = nvl($_GET, 'SAMLResponse');
-    $SAMLResponse = json_decode(decrypt(gzinflate(base64_decode($response)), $sharedkey), 1);
+    $SAMLResponse = json_decode(gzinflate(base64_decode($response)), 1);
 
     if (isset($_POST['RelayState']) && $rs = $_POST['RelayState']) {
         $rs = '&RelayState=' . $rs;

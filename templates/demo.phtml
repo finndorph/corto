@@ -16,7 +16,8 @@ tt {
 </style>
 </head>
 <body>
-<img alt="" src="images/corto_logo.png" width="100" />
+<? $corto_root = join("/", array_slice(explode("/", $_SERVER['SCRIPT_NAME']), 0, -1)); ?>
+<img alt="" src="<?= $corto_root . "/images/corto_logo.png"?>" width="100" />
 <br />
 
 <p>Welcome to the c<tt>o</tt>rto demopage.</p>

@@ -119,7 +119,7 @@ pKQ+xQF7edbfGUNwK72pZ5Ag3Yq+GwFKV0lxJ1zFUsyo
         $idp = $_POST['idp'];
 
         $request = array(
-            '_ID' => sha1(uniqid(mt_rand(), true)),
+            '_ID' => ID(),
             '_Version' => '2.0',
             '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
             '_Destination' => $idp,

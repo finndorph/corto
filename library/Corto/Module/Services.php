@@ -64,7 +64,6 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 'params' => $params,
                 'server' => $this->_server,
             );
-            $state = 'abc';
             $demofilters = array('StdSingleLogonService::sso');
         }
 
@@ -113,15 +112,19 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             }
 
             $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
-            #$demofilters = array(array('php' => 'DemoFilterClass::demofilter'));
             $state = get_defined_vars();
             $filterparams = array('request' => $receivedRequest,
-                                  'response' => $receivedResponse);
+                                  'response' => $receivedResponse,
+                                  'server' => $this->_server,);
+            $filters = array_merge(
+                $this->_server->getRemoteMD($receivedResponse['saml:Issuer']['__v'], 'IDP', 'corto:responseInputFilter', null, array()),
+                $this->_server->getCurrentMD('SP', 'corto:responseOutputFilter', null, array()));
+
         }
 
         // SP side filters
 
-        if (doresponseinputfilters($state, $demofilters, $filterparams)) {
+        if (doresponseinputfilters($state, $filters, $filterparams)) {
 
             extract($state);
             unset($state);
@@ -140,8 +143,11 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse, $proxySP);
             $state = get_defined_vars();
             $filterparams = array('request' => $receivedRequest,
-                                  'response' => $receivedResponse);
-            $filters = $this->_server->getRemoteMD($receivedRequest['saml:Issuer']['__v'], 'SP', 'corto:responseOutputFilter');
+                                  'response' => $receivedResponse,
+                                  'server' => $this->_server,);
+            $filters = array_merge(
+                $this->_server->getCurrentMD('IDP', 'corto:responseOutputFilter', null, array()),
+                $this->_server->getRemoteMD($receivedRequest['saml:Issuer']['__v'], 'SP', 'corto:responseOutputFilter', null, array()));
         }
 
         // IDP side filters

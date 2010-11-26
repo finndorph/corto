@@ -139,12 +139,18 @@ return array(
                                             ),
                                         ),
                                         array(
-                                            '_Name' => 'corto:ProxySP',
-                                            'saml:AttributeValue' => array(
-                                                array('__v' => '_HOSTED_/spwayf'),
-                                            ),
-                                        ),
-                                    ),
+                                             '_Name' => 'corto:ProxySP',
+                                             'saml:AttributeValue' => array(
+                                                 array('__v' => '_HOSTED_/spwayf'),
+                                             ),
+                                         ),
+                                        array(
+                                             '_Name' => 'corto:responseOutputFilter',
+                                             'saml:AttributeValue' => array(
+                                                 'DemoFilterClass::democonsent',
+                                             ),
+                                         ),
+                                     ),
                                 ),
                             ),
                             'md:SingleSignOnService' => array(
