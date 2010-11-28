@@ -1,61 +1,6 @@
 <?php
 
-class StdSingleLogonService {
-
-    static function sso($params)
-    {
-        $request = $params['cortodata']['request'];
-        $server = $params['cortodata']['server'];
-        $params = $params['cortodata']['params'];
-
-        // If we configured an IDPList in metadata this is our primary scoping
-        $scopedIDPs = $server->getPresetIDPs();
-
-        /**
-         * Add scoping in request to configured scoping - this is NOT according to the spec
-         * which says that you MUST append to a received IDPList
-         */
-        foreach ((array) nvl3($request, 'samlp:Scoping', 'samlp:IDPList', 'samlp:IDPEntry') as $IDPEntry) {
-            $scopedIDPs[] = $IDPEntry['_ProviderID'];
-        }
-
-        $requesterIDs = array($params['EntityID'], $request['saml:Issuer']['__v']);
-
-        // filter out already visited proxies (RequesterID) to prevent looping ...
-        foreach ((array) nvl2($request, 'samlp:Scoping', 'samlp:RequesterID') as $requesterID) {
-            $requesterIDs[] = $requesterID['__v'];
-        }
-
-        // remove issuer + us from scope for use now ..
-        $relevantScopedIDPs = array_diff($scopedIDPs, $requesterIDs);
-
-        // Get all registered Single Sign On Services
-        $candidateIDPs = $server->getAllowedIdps();
-
-        // If we have scoping, filter out every non-scoped IdP
-        $scopedCandidateIDPs = array_intersect($relevantScopedIDPs, $candidateIDPs);
-
-        // 1+ candidate found and 1+ in scoped, send authentication request to the first one
-        if ($idp = array_shift($scopedCandidateIDPs)) {
-            return $server->sendAuthenticationRequest($request, $idp, $relevantScopedIDPs);
-        }
-
-        // No IdPs found! Send an error response back.
-        if (empty($candidateIDPs)) {
-            $response = $server->createErrorResponse($request, 'NoSupportedIDP');
-            return $server->sendResponseToRequestIssuer($request, $response);
-        }
-
-        // 1+ non-scoped IdPs found, but isPassive attribute given, unable to continue
-        // NO call wayf first it might have an idea ...
-        if (nvl($request, '_IsPassive')) {
-            $response = $server->createErrorResponse($request, 'NoPassive');
-            return $server->sendResponseToRequestIssuer($request, $response);
-        }
-
-        // Store the request in the session
-        $_SESSION[$request['_ID']]['SAMLRequest'] = $request;
-    }
+class DemoFilterClass {
 
     static function showWayf($params)
     {
@@ -79,10 +24,6 @@ class StdSingleLogonService {
             exit;
         }
     }
-}
-
-class DemoFilterClass {
-
     static function democonsent($params)
     {
         $server = $params['cortodata']['server'];

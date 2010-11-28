@@ -59,22 +59,71 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 return $this->_server->sendResponseToRequestIssuer($request, $response);
             }
 
+            $filters = $this->_server->getCurrentMD('IDP', 'corto:requestfilter', null, array());
+
+            if ($filters) {
+                $filterparams = array(
+                    'request' => $request,
+                    'params' => $params,
+                    'server' => $this->_server,
+                );
+
+                $state = array();
+                if (dorequestfilter($state, $filters, $filterparams)) {
+                }
+
+            } else {
+                // If we configured an IDPList in metadata this is our primary scoping
+                $scopedIDPs = $this->_server->getPresetIDPs();
+
+                /**
+                 * Add scoping in request to configured scoping - this is NOT according to the spec
+                 * which says that you MUST append to a received IDPList
+                 */
+                foreach ((array) nvl3($request, 'samlp:Scoping', 'samlp:IDPList', 'samlp:IDPEntry') as $IDPEntry) {
+                    $scopedIDPs[] = $IDPEntry['_ProviderID'];
+                }
+
+                $requesterIDs = array($params['EntityID'], $request['saml:Issuer']['__v']);
+
+                // filter out already visited proxies (RequesterID) to prevent looping ...
+                foreach ((array) nvl2($request, 'samlp:Scoping', 'samlp:RequesterID') as $requesterID) {
+                    $requesterIDs[] = $requesterID['__v'];
+                }
+
+                // remove issuer + us from scope for use now ..
+                $relevantScopedIDPs = array_diff($scopedIDPs, $requesterIDs);
+
+                // Get all registered Single Sign On Services
+                $candidateIDPs = $this->_server->getAllowedIdps();
+
+                // If we have scoping, filter out every non-scoped IdP
+                $scopedCandidateIDPs = array_intersect($relevantScopedIDPs, $candidateIDPs);
+
+                // 1+ candidate found and 1+ in scoped, send authentication request to the first one
+                if ($idp = array_shift($scopedCandidateIDPs)) {
+                    return $this->_server->sendAuthenticationRequest($request, $idp, $relevantScopedIDPs);
+                }
+
+                // No IdPs found! Send an error response back.
+                if (empty($candidateIDPs)) {
+                    $response = $server->createErrorResponse($request, 'NoSupportedIDP');
+                    return $this->_server->sendResponseToRequestIssuer($request, $response);
+                }
+
+                // Store the request in the session
+                $_SESSION[$request['_ID']]['SAMLRequest'] = $request;
+
+            }
+
+            $filters = $this->_server->getCurrentMD('IDP', 'corto:discoverfilter', null, array());
+            if (!$filters) $filters = array('demoFilterClass::showWayf');
             $filterparams = array(
                 'request' => $request,
                 'params' => $params,
                 'server' => $this->_server,
             );
-
-            $filters = $this->_server->getCurrentMD('IDP', 'corto:requestfilter', null, array());
-            if (!$filters) $filters = array('StdSingleLogonService::sso');
-            $state= array();
         }
-
-        if (dorequestfilter($state, $filters, $filterparams)) {
-            $filters = $this->_server->getCurrentMD('IDP', 'corto:discoverfilter', null, array());
-            if (!$filters) $filters = array('StdSingleLogonService::showWayf');
-        }
-
         /* If we end up her we should show the wayf ... */
 
         if (dodiscoveryfilter($state, $filters, $filterparams)) {

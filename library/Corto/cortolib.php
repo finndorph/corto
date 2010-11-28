@@ -114,7 +114,12 @@ function nvl3($array, $index, $index2, $index3, $default = null)
 
 function ID()
 {
-    return '_'.sha1(uniqid(mt_rand(), true));
+    /* ID's should start with letter or '_'. Corto uses
+     * 'z' because ID's are used as session id's and
+     * '_' is not a legal in php session id's.
+     */
+    
+    return 'z'.sha1(uniqid(mt_rand(), true));
 }
 
 ;
