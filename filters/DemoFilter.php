@@ -2,11 +2,11 @@
 
 class StdSingleLogonService {
 
-    static function sso()
+    static function sso($params)
     {
-        $request = $_POST['cortodata']['request'];
-        $server = $_POST['cortodata']['server'];
-        $params = $_POST['cortodata']['params'];
+        $request = $params['cortodata']['request'];
+        $server = $params['cortodata']['server'];
+        $params = $params['cortodata']['params'];
 
         // If we configured an IDPList in metadata this is our primary scoping
         $scopedIDPs = $server->getPresetIDPs();
@@ -33,10 +33,10 @@ class StdSingleLogonService {
         $candidateIDPs = $server->getAllowedIdps();
 
         // If we have scoping, filter out every non-scoped IdP
-        $candidateIDPs = empty($relevantScopedIDPs) ? $candidateIDPs : array_intersect($relevantScopedIDPs, $candidateIDPs);
+        $scopedCandidateIDPs = array_intersect($relevantScopedIDPs, $candidateIDPs);
 
         // 1+ candidate found and 1+ in scoped, send authentication request to the first one
-        if ($idp = array_shift($candidateIDPs)) {
+        if ($idp = array_shift($scopedCandidateIDPs)) {
             return $server->sendAuthenticationRequest($request, $idp, $relevantScopedIDPs);
         }
 
@@ -54,14 +54,31 @@ class StdSingleLogonService {
         }
 
         // Store the request in the session
-        $id = $request['_ID'];
-        $_SESSION[$id]['SAMLRequest'] = $request;
-
-        // Show WAYF
-        $server->getSessionLog()->debug("SSO: Showing WAYF");
-        return showWayf($request, $candidateIDPs);
+        $_SESSION[$request['_ID']]['SAMLRequest'] = $request;
     }
 
+    static function showWayf($params)
+    {
+        $request = $params['cortodata']['request'];
+        $server = $params['cortodata']['server'];
+
+        if ($idp = nvl($_POST, '_idp_')) {
+            $server->sendAuthenticationRequest($request, $idp);
+        } else {
+
+            $candidateIDPs = $server->getAllowedIdps();
+
+            $output = $server->renderTemplate(
+                'discover',
+                array(
+                    'action' => $params['cortolocation'],
+                    'cortopassthru' => $params['cortopassthru'],
+                    'idpList' => $candidateIDPs,
+                ));
+            $server->sendOutput($output);
+            exit;
+        }
+    }
 }
 
 class DemoFilterClass {
@@ -80,7 +97,6 @@ class DemoFilterClass {
                 'consent',
                 array(
                     'action' => $params['cortolocation'],
-                    'ID' => $response['_ID'],
                     'attributes' => $attributes,
                     'cortopassthru' => $params['cortopassthru'],
                 ));
@@ -90,7 +106,7 @@ class DemoFilterClass {
             print $server->renderTemplate('noconsent');
             exit;
         }
-        return $params['cortodata'];
+        #return $params['cortodata'];
     }
 
 

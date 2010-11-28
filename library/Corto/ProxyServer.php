@@ -972,7 +972,7 @@ class Corto_ProxyServer {
         } else {
             $this->sendHeader('Location', $location);
         }
-
+        exit;
     }
 
     public function sendHeader($name, $value)

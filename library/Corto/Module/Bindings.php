@@ -815,6 +815,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 'trace' => false,
             ));
         $this->_server->sendOutput($output);
+        exit;
     }
 
     /**

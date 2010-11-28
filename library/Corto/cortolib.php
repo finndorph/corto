@@ -225,6 +225,11 @@ function dorequestfilter(&$state, &$filters, &$input)
     return handlefilters("request", $state, $filters, $input);
 }
 
+function dodiscoveryfilter(&$state, &$filters, &$input)
+{
+    return handlefilters("discovery", $state, $filters, $input);
+}
+
 function handlefilters($phase, &$state = null, &$filters = null, &$data = null)
 {
     $cortopassthru = nvl($_POST, 'cortopassthru') . nvl($_GET, 'cortopassthru');
@@ -284,7 +289,8 @@ function handlefilters($phase, &$state = null, &$filters = null, &$data = null)
             return $data;
         }
         $data = $_SESSION['corto_filter'][$cortopassthru]['data'];
-        $data = callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall);
+        $res = callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall);
+        if ($res) $data = $res;
         $_SESSION['corto_filter'][$cortopassthru]['i']++;
         $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
         $cortofirstcall = true;

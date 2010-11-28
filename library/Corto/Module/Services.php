@@ -64,10 +64,20 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 'params' => $params,
                 'server' => $this->_server,
             );
-            $demofilters = array('StdSingleLogonService::sso');
+
+            $filters = $this->_server->getCurrentMD('IDP', 'corto:requestfilter', null, array());
+            if (!$filters) $filters = array('StdSingleLogonService::sso');
+            $state= array();
         }
 
-        if (dorequestfilter($state, $demofilters, $filterparams)) {
+        if (dorequestfilter($state, $filters, $filterparams)) {
+            $filters = $this->_server->getCurrentMD('IDP', 'corto:discoverfilter', null, array());
+            if (!$filters) $filters = array('StdSingleLogonService::showWayf');
+        }
+
+        /* If we end up her we should show the wayf ... */
+
+        if (dodiscoveryfilter($state, $filters, $filterparams)) {
         }
     }
 

@@ -132,13 +132,7 @@ return array(
                             'md:Extensions' => array(
                                 'mdattr:EntityAttributes' => array(
                                     'saml:Attribute' => array(
-                                        array(
-                                            '_Name' => 'corto:IDPList',
-                                            'saml:AttributeValue' => array(
-                                                array('__v' => '_HOSTED_/idp'),
-                                            ),
-                                        ),
-                                        array(
+                                         array(
                                              '_Name' => 'corto:ProxySP',
                                              'saml:AttributeValue' => array(
                                                  array('__v' => '_HOSTED_/spwayf'),
@@ -186,20 +180,48 @@ return array(
                     ),
                 ),
                 array(
-                    '_entityID' => '_HOSTED_/idp',
-                    'md:Extensions' => array(
-                        'mdattr:EntityAttributes' => array(
-                            'saml:Attribute' => array(
+                    '_entityID' => '_HOSTED_/idp2',
+                    'md:SPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:AssertionConsumerService' =>
+                            array(
                                 array(
-                                    '_Name' => 'corto:sharedkey',
-                                    'saml:AttributeValue' => array(
-                                        array('__v' => 'abrakadabra'),
-                                    ),
+                                    '_Binding' => 'JSON-Redirect',
+                                    '_Location' => '_HOSTED_/idp2/Ivo',
+                                    '_index' => 1,
                                 ),
-                            )
+                            ),
                         ),
                     ),
-                    'md:SPSSODescriptor' => array(
+                    'md:IDPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:Extensions' => array(
+                                'mdattr:EntityAttributes' => array(
+                                    'saml:Attribute' => array(
+                                        array(
+                                            '_Name' => 'corto:IDPList',
+                                            'saml:AttributeValue' => array(
+                                                array('__v' => '_COHOSTED_/null.php'),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            'md:SingleSignOnService' => array(
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                                    '_Location' => '_HOSTED_/idp2/Jacob',
+                                    '_index' => 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                array(
+                    '_entityID' => '_HOSTED_/idp',
+                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                             'md:AssertionConsumerService' =>

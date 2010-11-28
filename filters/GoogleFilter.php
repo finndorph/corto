@@ -18,7 +18,7 @@ class GoogleFilter {
         $dollar = array();
         preg_match("/^(.*)@/", $attributes['eduPersonPrincipalName'][0], $dollar);
 
-        $mail = $dollar[1]; # . '@g.wayf.dk';
+        $mail = $dollar[1];
 
         unset($assertion['saml:AttributeStatement']);
         unset($assertion['ds:Signature']);
@@ -30,11 +30,8 @@ class GoogleFilter {
             '__v' => $mail,
         );
 
-
-        $assertion['saml:Conditions']
-        ['saml:AudienceRestriction']['saml:Audience']['__v'] = $acs;
-        $assertion['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_Recipient']
-                = $acs;
+        $assertion['saml:Conditions']['saml:AudienceRestriction']['saml:Audience']['__v'] = $acs;
+        $assertion['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_Recipient'] = $acs;
 
         return $params['cortodata'];
     }
