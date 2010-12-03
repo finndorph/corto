@@ -48,7 +48,7 @@ return array(
                 array(
                     '_entityID' => '_HOSTED_/sp',
                     'md:Extensions' => array(
-                         'mdattr:EntityAttributes' => array(
+                        'mdattr:EntityAttributes' => array(
                             'saml:Attribute' => array(
                                 array(
                                     '_Name' => 'corto:sharedkey',
@@ -132,19 +132,25 @@ return array(
                             'md:Extensions' => array(
                                 'mdattr:EntityAttributes' => array(
                                     'saml:Attribute' => array(
-                                         array(
-                                             '_Name' => 'corto:ProxySP',
-                                             'saml:AttributeValue' => array(
-                                                 array('__v' => '_HOSTED_/spwayf'),
-                                             ),
-                                         ),
                                         array(
-                                             '_Name' => 'corto:responseOutputFilter',
-                                             'saml:AttributeValue' => array(
-                                                 'DemoFilterClass::democonsent',
-                                             ),
-                                         ),
-                                     ),
+                                            '_Name' => 'corto:ProxySP',
+                                            'saml:AttributeValue' => array(
+                                                array('__v' => '_HOSTED_/spwayf'),
+                                            ),
+                                        ),
+                                        array(
+                                            '_Name' => 'corto:responseOutputFilter',
+                                            'saml:AttributeValue' => array(
+                                                'DemoFilterClass::democonsent',
+                                            ),
+                                        ),
+                                        array(
+                                            '_Name' => 'corto:cachefilter',
+                                            'saml:AttributeValue' => array(
+                                                'DemoFilterClass::democache',
+                                            ),
+                                        ),
+                                    ),
                                 ),
                             ),
                             'md:SingleSignOnService' => array(
@@ -221,7 +227,7 @@ return array(
                 ),
                 array(
                     '_entityID' => '_HOSTED_/idp',
-                     'md:SPSSODescriptor' => array(
+                    'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                             'md:AssertionConsumerService' =>

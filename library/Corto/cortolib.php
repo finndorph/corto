@@ -278,7 +278,7 @@ function handlefilters($phase, &$state = null, &$filters = null, &$data = null)
             $state = $_SESSION['corto_filter'][$cortopassthru]['state'];
             #unset($_SESSION['corto_filter'][$cortopassthru]);
             unset($_SESSION['corto_filter']);
-            return $data;
+            return true;
         }
         $data = $_SESSION['corto_filter'][$cortopassthru]['data'];
         $res = callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall);

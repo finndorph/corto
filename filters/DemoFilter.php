@@ -24,31 +24,56 @@ class DemoFilterClass {
             exit;
         }
     }
+
     static function democonsent($params)
-    {
-        $server = $params['cortodata']['server'];
-        if ($params['cortofirstcall']) {
-            $response = $params['cortodata']['response'];
+     {
+         $server = $params['cortodata']['server'];
+         if ($params['cortofirstcall']) {
+             $response = $params['cortodata']['response'];
 
-            $attributes = attributes2array(
-                $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
-            );
+             $attributes = attributes2array(
+                 $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
+             );
 
-            print $server->renderTemplate(
-                'consent',
-                array(
-                    'action' => $params['cortolocation'],
-                    'attributes' => $attributes,
-                    'cortopassthru' => $params['cortopassthru'],
-                ));
-            exit;
-        }
-        if (nvl($_POST, 'consent') !== 'yes') {
-            print $server->renderTemplate('noconsent');
-            exit;
-        }
-        #return $params['cortodata'];
-    }
+             print $server->renderTemplate(
+                 'consent',
+                 array(
+                     'action' => $params['cortolocation'],
+                     'attributes' => $attributes,
+                     'cortopassthru' => $params['cortopassthru'],
+                 ));
+             exit;
+         }
+         if (nvl($_POST, 'consent') !== 'yes') {
+             print $server->renderTemplate('noconsent');
+             exit;
+         }
+         #return $params['cortodata'];
+     }
+
+    static function democache($params)
+     {
+         $server = $params['cortodata']['server'];
+         if ($params['cortofirstcall']) {
+             $cd = $params['cortodata'];
+
+             print_r($cd['candidateIDPs']);
+             print_r($cd['request']);
+              print $server->renderTemplate(
+                 'consent',
+                 array(
+                     'action' => $params['cortolocation'],
+                     'attributes' => array('cache' => 'cache'),
+                     'cortopassthru' => $params['cortopassthru'],
+                 ));
+             exit;
+         }
+         if (nvl($_POST, 'consent') !== 'yes') {
+             print $server->renderTemplate('noconsent');
+             exit;
+         }
+         #return $params['cortodata'];
+     }
 
 
     static function demofilter()
