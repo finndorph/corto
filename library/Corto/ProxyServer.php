@@ -240,7 +240,6 @@ class Corto_ProxyServer {
 
         $this->startSession();
         $this->getSessionLog()->debug("Started request with $uri, resulting in parameters: " . var_export($parameters, true));
-
         $serviceName = $parameters['Service'];
         $this->getSessionLog()->debug("Calling service '$serviceName'");
         $this->getServicesModule()->$serviceName($parameters);
@@ -320,6 +319,7 @@ class Corto_ProxyServer {
         }
 
         $newRequest = $this->createEnhancedRequest($request, $idp, $scope);
+
         $newId = $newRequest['_ID'];
 
         // Store the original Request
@@ -698,12 +698,6 @@ class Corto_ProxyServer {
     public function createEnhancedResponse($request, $sourceResponse, $proxySP = null)
     {
         $response = $this->_createBaseResponse($request);
-        if (isset($request['__']['Transparent']) &&
-                $request['__']['Transparent']) {
-            $response['saml:Issuer']['__v'] = $sourceResponse['saml:Issuer']['__v'];
-            $response['saml:Assertion']['saml:Issuer']['__v'] = $sourceResponse['saml:Assertion']['saml:Issuer']['__v'];
-        }
-
         $response['samlp:Status'] = $sourceResponse['samlp:Status'];
         $response['saml:Assertion'] = $sourceResponse['saml:Assertion'];
 
@@ -843,13 +837,12 @@ class Corto_ProxyServer {
             // @todo check that the request is signed before accepting acsURLs
             // saml2int check that it is present in metadata may do for now ...
             // but we have to have a sam2int config flag to enable this in the future
-            $found = false;
             foreach ((array) $remoteEntity['SP']['AssertionConsumerService'] as $acs) {
-                if ($found = $acs['Location'] == $acsUrl) break;
-            }
-            if ($found) {
-                $response['_Destination'] = $acsUrl;
-                $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
+                if ($acs['Location'] == $acsUrl) {
+                    $response['_Destination'] = $acsUrl;
+                    $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
+                    break;
+                }
             }
         } elseif ($acsindex = nvl($request, '_AssertionConsumerServiceIndex')
                 && isset($remoteEntity['SP']['AssertionConsumerService'][$acsindex])) {
@@ -874,14 +867,13 @@ class Corto_ProxyServer {
 
     function sendResponseToRequestIssuer($request, $response)
     {
+
         $requestIssuer = $request['saml:Issuer']['__v'];
         unset($_SESSION[$request['_ID']]);
 
         if ($response['samlp:Status']['samlp:StatusCode']['_Value'] == 'urn:oasis:names:tc:SAML:2.0:status:Success') {
-
-            //			$this->filterOutputAssertionAttributes($response, $request);
             $this->saveSloInfo($response);
-            return $this->getBindingsModule()->send($response, $requestIssuer);
+             return $this->getBindingsModule()->send($response, $requestIssuer);
         }
         else {
             unset($response['saml:Assertion']);
@@ -1039,7 +1031,8 @@ class Corto_ProxyServer {
     /**
      * @return Corto_Log_Interface
      */
-    public function getSystemLog()
+    public
+    function getSystemLog()
     {
         return $this->_systemLog;
     }

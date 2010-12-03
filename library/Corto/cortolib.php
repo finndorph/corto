@@ -7,24 +7,6 @@
  * To change this template use File | Settings | File Templates.
  */
 
-
-function _getCertDataFromPem($pemKey)
-{
-    $lines = explode("\n", $pemKey);
-    $data = '';
-    foreach ($lines as $line) {
-        $line = rtrim($line);
-        if ($line === '-----BEGIN CERTIFICATE-----') {
-            $data = '';
-        } elseif ($line === '-----END CERTIFICATE-----') {
-            break;
-        } else {
-            $data .= $line . PHP_EOL;
-        }
-    }
-    return $data;
-}
-
 function encrypt($cleartext, $passphrase)
 {
     if (function_exists('mcrypt_encrypt')) {
@@ -118,8 +100,8 @@ function ID()
      * 'z' because ID's are used as session id's and
      * '_' is not a legal in php session id's.
      */
-    
-    return 'z'.sha1(uniqid(mt_rand(), true));
+
+    return 'z' . sha1(uniqid(mt_rand(), true));
 }
 
 ;
@@ -235,6 +217,11 @@ function dodiscoveryfilter(&$state, &$filters, &$input)
     return handlefilters("discovery", $state, $filters, $input);
 }
 
+function docachefilter(&$state, &$filters, &$input)
+{
+    return handlefilters("cache", $state, $filters, $input);
+}
+
 function handlefilters($phase, &$state = null, &$filters = null, &$data = null)
 {
     $cortopassthru = nvl($_POST, 'cortopassthru') . nvl($_GET, 'cortopassthru');
@@ -313,7 +300,7 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
     $_POST['cortolocation'] = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://'
             . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
-     if ($thefilter = nvl($filter, 'type') == 'url') {
+    if ($thefilter = nvl($filter, 'type') == 'url') {
         $_POST['cortotoken'] = $filter['token'];
         $_POST['cortoreturn'] = 'json';
 
@@ -346,7 +333,7 @@ function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall)
             exit;
         }
     } else {
-         debug('filter', $filter);
+        debug('filter', $filter);
         $_POST['cortoreturn'] = 'array';
         return call_user_func($filter, $_POST);
     }

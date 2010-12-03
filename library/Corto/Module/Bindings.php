@@ -128,6 +128,13 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $deflate = $binding == self::HTTPRedirect || $binding == self::JSONRedirect;
         $json = $binding == self::JSONRedirect || $binding == self::JSONPOST;
         $req = $post ? $_POST : $_GET;
+        # live@edu hack - advertis as redirect but accept post ...
+        if (nvl($_POST, $key)) {
+            $post = true;
+            $deflate = false;
+            $req = $_POST;
+        }
+
         $message = base64_decode($req[$key]);
         if ($deflate) {
             $message = gzinflate($message);
@@ -145,6 +152,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
             'Raw' => $message,
             'paramname' => $key,
         );
+        debug('request: ', $messageArray);
+
         return $messageArray;
     }
 
@@ -745,7 +754,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
      */
     protected function _sendHTTPPOST($message, $remoteEntity)
     {
-       # print_r($message);;
+        # print_r($message);;
         $name = $message['__t'];
         if ($name == 'samlp:AuthnRequest'
                 && ($this->_server->getRemoteMD($remoteEntity, 'IDP', 'WantAuthnRequestsSigned', null, false)
@@ -769,10 +778,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 $message = $this->_sign($privatekey, $certificate, $message);
             }
         }
-        #print_r($message); exit;
 
         $encodedMessage = Corto_XmlToArray::array2xml($message);
-        #print_r($encodedMessage); exit;
+
         if ($this->_server->getCurrentMD('debug', null, null, false)) {
             $dom = new DOMDocument();
             $dom->loadXML($encodedMessage);
@@ -951,7 +959,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
         $signature['ds:KeyInfo']['ds:X509Data']['ds:X509Certificate']['__v'] = $certificate;
         $element['ds:Signature'] = $signature;
-        foreach($element as $tag => $item) {
+        foreach ($element as $tag => $item) {
             if ($tag == 'ds:Signature') continue;
             $newelement[$tag] = $item;
             if ($tag == 'saml:Issuer') $newelement['ds:Signature'] = $signature;
