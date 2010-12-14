@@ -73,7 +73,7 @@ return array(
                             'md:SingleLogoutService' => array(
                                 array(
                                     '_Binding' => 'JSON-Redirect',
-                                    '_Location' => '_HOSTED_/sp/Mads/SLO',
+                                    '_Location' => '_HOSTED_/corto/SLO',
                                 ),
                             ),
                         ),
