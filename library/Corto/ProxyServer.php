@@ -42,8 +42,7 @@ class Corto_ProxyServer {
     protected $_modules = array();
     protected $_templatePath;
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->_server = $this;
     }
 
@@ -52,8 +51,7 @@ class Corto_ProxyServer {
     /**
      * @return Corto_Module_Bindings
      */
-    public function getBindingsModule()
-    {
+    public function getBindingsModule() {
         return $this->_getModule(self::MODULE_BINDINGS);
     }
 
@@ -61,16 +59,14 @@ class Corto_ProxyServer {
      * @param Corto_Module_Bindings $bindingsInstance
      * @return Corto_ProxyServer
      */
-    public function setBindingsModule(Corto_Module_Bindings $bindingsInstance)
-    {
+    public function setBindingsModule(Corto_Module_Bindings $bindingsInstance) {
         return $this->_setModule(self::MODULE_BINDINGS, $bindingsInstance);
     }
 
     /**
      * @return Corto_Module_Services
      */
-    public function getServicesModule()
-    {
+    public function getServicesModule() {
         return $this->_getModule(self::MODULE_SERVICES);
     }
 
@@ -78,8 +74,7 @@ class Corto_ProxyServer {
      * @param Corto_Module_Services $servicesInstance
      * @return Corto_ProxyServer
      */
-    public function setServicesModule(Corto_Module_Services $servicesInstance)
-    {
+    public function setServicesModule(Corto_Module_Services $servicesInstance) {
         return $this->_setModule(self::MODULE_SERVICES, $servicesInstance);
     }
 
@@ -87,8 +82,7 @@ class Corto_ProxyServer {
      * @param string $name
      * @return Corto_Module_Abstract
      */
-    protected function _getModule($name)
-    {
+    protected function _getModule($name) {
         return $this->_modules[$name];
     }
 
@@ -97,24 +91,20 @@ class Corto_ProxyServer {
      * @param  $moduleInstance
      * @return Corto_ProxyServer
      */
-    protected function _setModule($name, Corto_Module_Abstract $moduleInstance)
-    {
+    protected function _setModule($name, Corto_Module_Abstract $moduleInstance) {
         $this->_modules[$name] = $moduleInstance;
         return $this;
     }
 
-    public function getCurrentMD($f1, $f2 = null, $f3 = null, $default = null)
-    {
+    public function getCurrentMD($f1, $f2 = null, $f3 = null, $default = null) {
         return $this->_getMD($this->_metadata['current'], $f1, $f2, $f3, $default);
     }
 
-    public function getRemoteMD($id, $f1, $f2 = null, $f3 = null, $default = null)
-    {
+    public function getRemoteMD($id, $f1, $f2 = null, $f3 = null, $default = null) {
         return $this->_getMD($this->_metadata['remote'][$id], $f1, $f2, $f3, $default);
     }
 
-    private function _getMD($md, $f1, $f2, $f3, $default = null)
-    {
+    private function _getMD($md, $f1, $f2, $f3, $default = null) {
         if ($f3) {
             $res = nvl3($md, $f1, $f2, $f3);
         } elseif ($f2) {
@@ -134,38 +124,31 @@ class Corto_ProxyServer {
     }
 
 
-    public function selfUrl($entityid = null)
-    {
+    public function selfUrl($entityid = null) {
         return 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $this->selfPath($entityid);
     }
 
-    public function selfPath($entityid = null)
-    {
+    public function selfPath($entityid = null) {
         return $_SERVER['SCRIPT_NAME'] . ($entityid ? '/' . $entityid : '');
     }
 
-    public function selfDestination()
-    {
+    public function selfDestination() {
         return self::selfUrl() . $_SERVER['PATH_INFO'];
     }
 
-    public function getRemoteEntity($entityId)
-    {
+    public function getRemoteEntity($entityId) {
         return nvl($this->_metadata['remote'], $entityId);
     }
 
-    public function getRemoteEntities()
-    {
+    public function getRemoteEntities() {
         return array_intersect($this->_metadata['remote'], array($this->_metadata['current']));
     }
 
-    public function getPresetIDPs()
-    {
+    public function getPresetIDPs() {
         return nvl3($this->_metadata, 'current', 'IDP', 'corto:IDPList', array());
     }
 
-    public function getAllowedIDPs($federation = null, $sso = false)
-    {
+    public function getAllowedIDPs($federation = null, $sso = false) {
         $res = array();
         if ($federation) {
             $metadata = $this->_metadata['federations'][$federation];
@@ -195,8 +178,7 @@ class Corto_ProxyServer {
     }
 
 
-    public function setMetadata($metadatafile)
-    {
+    public function setMetadata($metadatafile) {
         /**
          * This is to allow the default metadata to be independent of the location of corto
          * Replaces _HOSTED_ with the actual location
@@ -209,15 +191,12 @@ class Corto_ProxyServer {
         $metadatadata = str_replace('_COHOSTED_', $cohosted, $metadatadata);
         #return include 'data:text/plain,' . $metadatadata;
         $this->_metadata = eval($metadatadata);
-        foreach ($this->_metadata['lookuptable'] as $federation => &$url2meta) {
-            $url2meta[$hosted . "/_VVPMCIP_"] = array(
-                'Service' => '_VVPMCIP_',
-            );
-        }
+        $url2meta[$hosted . "/_VVPMCIP_"] = array(
+            'Service' => '_VVPMCIP_',
+        );
     }
 
-    public function setTemplatePath($path)
-    {
+    public function setTemplatePath($path) {
         $this->_templatePath = $path;
         return $this;
     }
@@ -229,8 +208,7 @@ class Corto_ProxyServer {
      * @param  $uri
      * @return void
      */
-    public function serveRequest($uri = null)
-    {
+    public function serveRequest($uri = null) {
         /*
            * non null $uri is used for the INTERNAL binding
            */
@@ -255,8 +233,7 @@ class Corto_ProxyServer {
      * @param  $uri the full service uri
      * @return array with EntityID, Service and Binding
      */
-    public function getParametersFromUrl($uri)
-    {
+    public function getParametersFromUrl($uri) {
         #print_r($this->_metadata);
         foreach ((array) $this->_metadata['lookuptable'] as $federation => $url2meta) {
             if ($remote = nvl($url2meta, $uri)) break;
@@ -289,8 +266,7 @@ class Corto_ProxyServer {
      * @param  $entityID
      * @param  $federation if null stay in the current federation
      */
-    public function setCurrentEntity($entityID, $federation = null)
-    {
+    public function setCurrentEntity($entityID, $federation = null) {
         if ($federation) {
             $this->_metadata['remote'] = $this->_metadata['federations'][$federation];
         }
@@ -309,8 +285,7 @@ class Corto_ProxyServer {
      * @param  $scope
      * @return void
      */
-    public function sendAuthenticationRequest(array $request, $idp, $scope = null)
-    {
+    public function sendAuthenticationRequest(array $request, $idp, $scope = null) {
         $originalId = $request['_ID'];
 
         $proxySP = $this->_server->getCurrentMD('IDP', 'corto:ProxySP', 0, false);
@@ -348,8 +323,7 @@ class Corto_ProxyServer {
      * @param array|null $scoping
      * @return array
      */
-    public function createEnhancedRequest($originalRequest, $idp, array $scoping = null)
-    {
+    public function createEnhancedRequest($originalRequest, $idp, array $scoping = null) {
         $remoteMetaData = $this->_metadata['remote'][$idp];
         $ourMetaData = $this->_metadata['current'];
         $defaultacs = $ourMetaData['SP']['AssertionConsumerService']['default'];
@@ -437,8 +411,7 @@ class Corto_ProxyServer {
      * @param array $message
      */
 
-    public function saveSloInfo(array $message)
-    {
+    public function saveSloInfo(array $message) {
         $issuer = $message['saml:Issuer']['__v'];
         $me = $this->getCurrentMD('entityID');
         if ($issuer == $me) { // outgoing response
@@ -488,8 +461,7 @@ class Corto_ProxyServer {
      *
      */
 
-    public function sloinit($message)
-    {
+    public function sloinit($message) {
         $id = nvl($message, 'saml:NameID');
         if (!$id) {
             throw new Corto_ProxyServer_Exception("No NameID in message (EncryptedID not supported yet!)");
@@ -524,8 +496,7 @@ class Corto_ProxyServer {
      *
      *
      */
-    public function handleslo(array $message)
-    {
+    public function handleslo(array $message) {
         $me = $this->getCurrentMD('entityID');
         $inresponseto = $message['_InResponseTo'];
         $req = db_get('REQ-' . $inresponseto);
@@ -584,8 +555,7 @@ class Corto_ProxyServer {
      * @return bool
      *
      */
-    public function sendLogoutRequest($slorequestinfo)
-    {
+    public function sendLogoutRequest($slorequestinfo) {
         $type = $slorequestinfo['type'];
         $entity = $slorequestinfo['entity'];
         $sloEndpoints = nvl($this->_metadata['remote'][$entity][$type], 'SingleLogoutService');
@@ -635,8 +605,7 @@ class Corto_ProxyServer {
      * @param  $partial - true if not all slo request sent from this entity was successful
      * @return void
      */
-    public function sendLogoutResponse($sloinfo)
-    {
+    public function sendLogoutResponse($sloinfo) {
         $remote = $this->_metadata['remote'][$sloinfo['Issuer']];
         if ($sloinfo['Binding'] == 'urn:oasis:names:tc:SAML:2.0:bindings:SOAP') {
             $endpoint['Binding'] = $sloinfo['Binding'];
@@ -687,8 +656,7 @@ class Corto_ProxyServer {
 
     //////// RESPONSE HANDLING ////////
 
-    public function createErrorResponse($request, $errorStatus)
-    {
+    public function createErrorResponse($request, $errorStatus) {
         $response = $this->_createBaseResponse($request);
 
         $errorCodePrefix = 'urn:oasis:names:tc:SAML:2.0:status:';
@@ -703,8 +671,7 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    public function createEnhancedResponse($request, $sourceResponse, $proxySP = null)
-    {
+    public function createEnhancedResponse($request, $sourceResponse, $proxySP = null) {
         $response = $this->_createBaseResponse($request);
         $response['samlp:Status'] = $sourceResponse['samlp:Status'];
         $response['saml:Assertion'] = $sourceResponse['saml:Assertion'];
@@ -736,8 +703,7 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    public function createNewResponse($request, $attributes = array())
-    {
+    public function createNewResponse($request, $attributes = array()) {
         $response = $this->_createBaseResponse($request);
 
         $soon = $this->timeStamp($this->getCurrentMD('NotOnOrAfter', null, null, 300));
@@ -813,8 +779,7 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    protected function _createBaseResponse($request)
-    {
+    protected function _createBaseResponse($request) {
         $now = $this->timeStamp();
         $response = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'samlp:Response',
@@ -874,8 +839,7 @@ class Corto_ProxyServer {
     }
 
 
-    function sendResponseToRequestIssuer($request, $response)
-    {
+    function sendResponseToRequestIssuer($request, $response) {
 
         $requestIssuer = $request['saml:Issuer']['__v'];
         unset($_SESSION[$request['_ID']]);
@@ -890,8 +854,7 @@ class Corto_ProxyServer {
         }
     }
 
-    public function getReceivedRequestFromResponse($id)
-    {
+    public function getReceivedRequestFromResponse($id) {
         if (!$id || !isset($_SESSION[$id])) {
             throw new Corto_ProxyServer_Exception("Unknown id ($id) in InResponseTo attribute?!?");
         }
@@ -914,8 +877,7 @@ class Corto_ProxyServer {
 
     ////////  TEMPLATE RENDERING /////////
 
-    public function renderTemplate($templateName, $vars = array(), $parentTemplates = array())
-    {
+    public function renderTemplate($templateName, $vars = array(), $parentTemplates = array()) {
         if (!is_array($vars)) {
             $vars = array('content' => $vars);
         }
@@ -943,8 +905,7 @@ class Corto_ProxyServer {
 
     /// Filters ///
 
-    public function callfilters($phase, &$state = null, &$filters = null, &$data = null, $service = null)
-    {
+    public function callfilters($phase, &$state = null, &$filters = null, &$data = null, $service = null) {
         $cortopassthru = nvl($_POST, 'cortopassthru') . nvl($_GET, 'cortopassthru');
         if ($phase == 'init') {
             if ($cortopassthru) {
@@ -1013,8 +974,7 @@ class Corto_ProxyServer {
         }
     }
 
-    private function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall, $service)
-    {
+    private function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall, $service) {
         $_POST['cortophase'] = $phase;
         $_POST['cortodata'] = $data;
         $_POST['cortocookiepath'] = "";
@@ -1036,7 +996,7 @@ class Corto_ProxyServer {
 
             $content = http_build_query($_POST);
             $headers = array('Host', 'User_Agent', 'Accept', 'Accept_Language', 'Accept_Encoding',
-                             'Accept_Charset', 'Cookie');
+                'Accept_Charset', 'Cookie');
             foreach ($headers as $h) {
                 $k = str_replace('_', '-', ucfirst($h));
                 $header .= "$k: " . $_SERVER['HTTP_' . strtoupper($h)] . "\r\n";
@@ -1078,8 +1038,7 @@ class Corto_ProxyServer {
      *
      * @return array Raw parameters form the query string
      */
-    public function getRawGet()
-    {
+    public function getRawGet() {
         $rawGet = array();
         foreach (explode("&", $_SERVER['QUERY_STRING']) as $parameter) {
             if (preg_match("/^(.+)=(.*)$/", $parameter, $keyAndValue)) {
@@ -1089,8 +1048,7 @@ class Corto_ProxyServer {
         return $rawGet;
     }
 
-    public function redirect($location, $message)
-    {
+    public function redirect($location, $message) {
         $this->getSessionLog()->debug("Redirecting to $location");
 
         if ($this->getCurrentMD('debug', null, null, false)) {
@@ -1102,13 +1060,11 @@ class Corto_ProxyServer {
         exit;
     }
 
-    public function sendHeader($name, $value)
-    {
+    public function sendHeader($name, $value) {
         return header("$name: $value");
     }
 
-    public function sendOutput($rawOutput)
-    {
+    public function sendOutput($rawOutput) {
         return print $rawOutput;
     }
 
@@ -1123,13 +1079,11 @@ class Corto_ProxyServer {
      * @param int $deltaSeconds
      * @return string
      */
-    public function timeStamp($deltaSeconds = 0)
-    {
+    public function timeStamp($deltaSeconds = 0) {
         return gmdate('Y-m-d\TH:i:s\Z', time() + $deltaSeconds);
     }
 
-    public function getNewId()
-    {
+    public function getNewId() {
         return ID();
     }
 
@@ -1139,8 +1093,7 @@ class Corto_ProxyServer {
      *
      * @return void
      */
-    public function startSession()
-    {
+    public function startSession() {
         $cookie_path = $_SERVER['SCRIPT_NAME'];
         $secure_cookie = nvl($_SERVER, 'HTTPS');
         // IIS returns 'off' if not https
@@ -1154,8 +1107,7 @@ class Corto_ProxyServer {
         #$_SESSION['__entity__'] = $this->_metadata['current']['entityID'];
     }
 
-    protected function restartSession($newId, $newName)
-    {
+    protected function restartSession($newId, $newName) {
         session_write_close();
 
         session_id($newId);
@@ -1167,18 +1119,15 @@ class Corto_ProxyServer {
      * @return Corto_Log_Interface
      */
     public
-    function getSystemLog()
-    {
+    function getSystemLog() {
         return $this->_systemLog;
     }
 
-    public function getSessionLog()
-    {
+    public function getSessionLog() {
         return $this->_systemLog;
     }
 
-    public function setSystemLog(Corto_Log_Interface $log)
-    {
+    public function setSystemLog(Corto_Log_Interface $log) {
         $this->_systemLog = $log;
     }
 

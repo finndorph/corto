@@ -6,30 +6,23 @@
  * Time: 11:05:27 AM
  * To change this template use File | Settings | File Templates.
  */
- 
+
+require '../library/Corto/XmlToArray.php';
+require '../library/Corto/cortolib.php';
+
 require '../library/Corto/Module/Metadata.php';
 $meta = new Corto_Module_Metadata();
 
-$metadatasources = array(
-    'private' => ARRAY(
-        'php:' . dirname(__FILE__) . '/../configs/cortotest.common.meta.php',
-    ),
+preg_match("/^([^\.]+)/", basename(__FILE__), $dollar);
 
-    'federations' => array(
-        'testing' => array(
-            'private' => array(
-                'php:' . dirname(__FILE__) . '/../configs/cortotest.privateparts.meta.php',
-            ),
-            'public' => array(
-                # json: ...
-                # xml: ... default
-                'php:' . dirname(__FILE__) . '/../configs/cortotest.meta.php',
-                #'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&mimetype=--+Please+select+MIME+type+--&external=corto',
-            ),
-        ),
-    ),
+$federation = $dollar[1];
+
+$metadatasources = array(
+    'php:' . dirname(__FILE__) . '/../configs/cortotest.common.meta.php',
+    'php:' . dirname(__FILE__) . '/../configs/cortotest.privateparts.meta.php',
+    'php:' . dirname(__FILE__) . '/../configs/cortotest.meta.php',
 );
 
-$metadatafile = '/var/tmp/corto_optimized_metadata.php';
+$metadatafile = $federation . '.optimized.metadata.php';
 
 $meta->prepareMetadata($metadatasources, $metadatafile);

@@ -7,7 +7,7 @@
  * To change this template use File | Settings | File Templates.
  */
 
-function encrypt($cleartext, $passphrase)
+function xencrypt($cleartext, $passphrase)
 {
     if (function_exists('mcrypt_encrypt')) {
         $key_len = mcrypt_get_key_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
@@ -20,7 +20,7 @@ function encrypt($cleartext, $passphrase)
     }
 }
 
-function decrypt($ciphertext, $passphrase)
+function xdecrypt($ciphertext, $passphrase)
 {
     if (function_exists('mcrypt_encrypt')) {
         $key_len = mcrypt_get_key_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);

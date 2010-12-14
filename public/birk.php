@@ -26,7 +26,7 @@ try {
     require '../filters/LIveAtEduFilter.php';
 
 /*
- * If called without path - use demo.php
+ * If called without path - use index.php
  */
     $metadatafile = '../configs/birk_optimized_metadata.php';
 

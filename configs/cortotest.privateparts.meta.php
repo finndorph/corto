@@ -11,7 +11,7 @@ return array(
             '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
             'md:EntityDescriptor' => array(
                 array(
-                    '_entityID' => '_HOSTED_',
+                    '_entityID' => '_COMMON_',
 
                     'md:Extensions' => array(
                         'saml:Attribute' => array(

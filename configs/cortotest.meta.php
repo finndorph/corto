@@ -31,14 +31,14 @@ return array(
                             'md:AssertionConsumerService' => array(
                                 array(
                                     '_Binding' => 'JSON-Redirect',
-                                    '_Location' => '_COHOSTED_/demo.php/ACS',
+                                    '_Location' => '_COHOSTED_/index.php/ACS',
                                     '_index' => 1,
                                 ),
                             ),
                             'md:SingleLogoutService' => array(
                                 array(
                                     '_Binding' => 'JSON-Redirect',
-                                    '_Location' => '_COHOSTED_/demo.php/SLO',
+                                    '_Location' => '_COHOSTED_/index.php/SLO',
                                     '_index' => 1,
                                 ),
                             ),

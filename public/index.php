@@ -1,57 +1,96 @@
 <?php
-error_reporting(E_ALL);
-session_save_path('/tmp');
 
-set_error_handler('error2exception', E_ALL);
-
-function error2exception($errno, $errmsg)
-{
-    throw new Exception('This Error Happened ' . $errno . ': ' . $errmsg);
+if (empty($_SERVER['PATH_INFO'])) {
+    include '../library/Corto/cortolib.php';
+    demoapp();
+}
+else {
+    include 'corto.php';
 }
 
-try {
 
-/*
- * If called without path - use demo.php
- */
+function demoapp() {
+    $sharedkey = 'abrakadabra';
 
-    if (empty($_SERVER['PATH_INFO']))  include 'demo.php';
-    require '../library/Corto/ProxyServer.php';
-    $server = new Corto_ProxyServer();
-    require '../filters/DemoFilter.php';
+    $corto = join("/", array_slice(explode("/", 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
 
-/*
- * Initializing metadata for demo purposes
- */
+    $self = $corto . '/corto.php';
+    $corto = $corto . '/corto.php';
+    if (isset($_POST['doslo'])) {
+        $request = array(
+            '__t' => 'samlp:LogoutRequest',
+            '_ID' => ID(),
+            '_Version' => '2.0',
+            '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
+            '_Destination' => "$corto/sp/Mads/SLO",
+            'saml:Issuer' => array('__v' => $self),
+            'saml:NameID' => json_decode(stripcslashes($_POST['subject']), 1),
+            '_NotOnOrAfter' => timeStamp(10),
+        );
+        $location = $request['_Destination'];
+        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(json_encode($request))));
+        print render('redirect', array('location' => $location, 'message' => $request));
+        exit;
 
-    include ('../configs/corto.mdmgmt.php');
+    }
+    if (isset($_POST['doit'])) {
+        $idp = empty($_POST['idp']) ? NULL : $_POST['idp'];
+        if (!$idp) {
+            $idp = "sp";
+        }
+        $request = array(
+            '_ID' => ID(),
+            '_Version' => '2.0',
+            '_IssueInstant' => gmdate('Y-m-d\TH:i:s\Z', time()),
+            '_Destination' => "$corto/$idp/Mads",
+            '_ForceAuthn' => !empty($_REQUEST['ForceAuthn']) ? 'true' : 'false',
+            '_IsPassive' => !empty($_REQUEST['IsPassive']) ? 'true' : 'false',
+            #            '_AssertionConsumerServiceURL' => $corto,
+            'AssertionConsumerServiceIndex' => 0,
+            '_AttributeConsumingServiceIndex' => 5,
+            '_ProtocolBinding' => 'JSON-Redirect',
+            'saml:Issuer' => array('__v' => $self),
+        );
 
-    $server->setMetadata('/var/tmp/corto_optimized_metadata.php');
+        if (!empty($_REQUEST['IDPList'])) {
+            foreach ((array) $_REQUEST['IDPList'] as $idp) {
+                $idpList[] = array('_ProviderID' => $idp);
+                $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'] = $idpList;
+            }
+        }
 
-    $server->setTemplatePath(dirname(__FILE__) . '/../templates/');
+        $relayState = 'Dummy RelayState ...';
+        #$request['samlp:Scoping']['_ProxyCount'] = 2;
+        $location = $request['_Destination'];
+        $location .= "?SAMLRequest=" . urlencode(base64_encode(gzdeflate(json_encode($request))))
+                . ($relayState ? '&RelayState=' . urlencode($relayState) : '');
+        print render('redirect', array('location' => $location, 'message' => $request));
+        exit;
+    }
+    $relayState = $rs = $message = null;
+    $response = nvl($_GET, 'SAMLResponse');
+    $SAMLResponse = json_decode(gzinflate(base64_decode($response)), 1);
 
-/*
- * include standard modules
- */
-    require '../library/Corto/Module/Services.php';
-    $server->setServicesModule(new Corto_Module_Services($server));
+    if (isset($_POST['RelayState']) && $rs = $_POST['RelayState']) {
+        $rs = '&RelayState=' . $rs;
+    }
 
-    require '../library/Corto/Module/Bindings.php';
-    $server->setBindingsModule(new Corto_Module_Bindings($server));
+    print render(
+        'demo',
+        array(
+            'action' => $self,
+            #                'idps' => array_keys($GLOBALS['metabase']['remote']),
+            'SAMLResponse' => $SAMLResponse,
+            'message' => "RelayState: " . nvl($_GET, 'RelayState'),
+            'self' => $self)
+    );
+}
 
-    require '../library/Corto/Log/Syslog.php';
-    $server->setSystemLog(new Corto_Log_Syslog());
-
-/*
- * Handle requests/responses to Corto
- */
-    $server->serveRequest();
-} catch (Exception $e) {
-    header('HTTP/1.0 500 Internal Server Error');
-    header('Content-Type: text/plain; charset=utf-8');
-    $uri = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
-            . $_SERVER['PHP_SELF'];
-    echo("ERROR: $uri \n");
-    echo($e->getMessage() . "\n");
-    echo $e->getTraceAsString();
+function render($template, $vars = array()) {
+    extract($vars); // Extract the vars to local namespace
+    ob_start(); // Start output buffering
+    include('../templates/' . $template . '.phtml'); // Include the file
+    $content = ob_get_contents(); // Get the content of the buffer
+    ob_end_clean(); // End buffering and discard
+    return $content; // Return the content
 }
