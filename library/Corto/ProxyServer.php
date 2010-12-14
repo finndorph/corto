@@ -708,6 +708,7 @@ class Corto_ProxyServer {
         $response = $this->_createBaseResponse($request);
         $response['samlp:Status'] = $sourceResponse['samlp:Status'];
         $response['saml:Assertion'] = $sourceResponse['saml:Assertion'];
+        unset($response['saml:Assertion']['ds:Signature']);
 
         // remove us from the list otherwise we will as a proxy be there multiple times
         // as the assertion passes through multiple times ???
