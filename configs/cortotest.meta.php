@@ -59,6 +59,12 @@ return array(
                                     '_isDefault' => true,
                                 ),
                             ),
+                            'md:SingleLogoutService' => array(
+                                 array(
+                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                                     '_Location' => '_HOSTED_/corto/SPSLO',
+                                 ),
+                             ),
                         ),
                     ),
                     'md:IDPSSODescriptor' => array(
@@ -66,14 +72,14 @@ return array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                              'md:SingleSignOnService' => array(
                                 array(
-                                    '_Binding' => 'HTTP-Redirect',
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
                                     '_Location' => '_HOSTED_/corto/SSO',
                                 ),
                             ),
                             'md:SingleLogoutService' => array(
                                 array(
-                                    '_Binding' => 'JSON-Redirect',
-                                    '_Location' => '_HOSTED_/corto/SLO',
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                                    '_Location' => '_HOSTED_/corto/IDPSLO',
                                 ),
                             ),
                         ),
