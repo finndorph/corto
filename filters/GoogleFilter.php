@@ -11,7 +11,7 @@ class GoogleFilter {
 
     static function google($params)
     {
-        $uid = 'antonnine';
+        $uid = 'antonten';
         #self::provision($uid, '1234567890', 'Anton', 'Banton');
         $acs = $params['cortodata']['response']['_Destination'];
         $assertion = &$params['cortodata']['response']['saml:Assertion'];
@@ -21,7 +21,7 @@ class GoogleFilter {
         preg_match("/^(.*)@/", $attributes['eduPersonPrincipalName'][0], $dollar);
 
         $mail = $dollar[1];
-        $mail = $uid;
+        #$mail = $uid;
 
         unset($assertion['saml:AttributeStatement']);
         unset($assertion['ds:Signature']);

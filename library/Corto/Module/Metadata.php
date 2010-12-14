@@ -21,19 +21,19 @@ class Corto_Module_Metadata {
         $commoncommon = array();
         $finalmetadata = array();
         foreach ((array) nvl($metadatasources, 'private') as $source) {
-            $commoncommon = merge($commoncommon, self::optimizeMetaData(self::retrieveMetadata($source)));
+            $commoncommon = self::merge($commoncommon, self::optimizeMetaData(self::retrieveMetadata($source)));
         }
         foreach ($metadatasources['federations'] as $federation => $sources) {
             $common = $commoncommon;
             foreach ((array) nvl($sources, 'private') as $source) {
-                $common = merge($common, self::optimizeMetaData(self::retrieveMetadata($source)));
+                $common = self::merge($common, self::optimizeMetaData(self::retrieveMetadata($source)));
             }
             foreach ((array) nvl($sources, 'public') as $source) {
                 $md = self::optimizeMetaData(self::retrieveMetadata($source), $federation, nvl($common, '_COMMON_'));
                 if (empty($finalmetadata[$federation])) {
                     $finalmetadata[$federation] = array();
                 }
-                $finalmetadata[$federation] = merge($finalmetadata[$federation], $md);
+                $finalmetadata[$federation] = self::merge($finalmetadata[$federation], $md);
             }
         }
         $export = array('federations' => $finalmetadata, 'lookuptable' => $this->prepareLookuptables($finalmetadata));
@@ -96,7 +96,7 @@ class Corto_Module_Metadata {
                     }
                 }
             }
-            $entitiescommon = merge($commonmd, $entitiescommon);
+            $entitiescommon = self::merge($commonmd, $entitiescommon);
 
             foreach ((array) $entitiesDescriptor['md:EntityDescriptor'] as $entityDescriptor) {
                 if (empty($entityDescriptor['_entityID'])) $entityDescriptor['_entityID'] = '_COMMON_';
@@ -199,7 +199,7 @@ class Corto_Module_Metadata {
                             $cortoEntityDescriptor[$descriptor]['corto:IDPList'] = $idplist;
                         }
 
-                        $cortoEntityDescriptor[$descriptor] = merge(nvl($common, $descriptor), nvl($cortoEntityDescriptor, $descriptor));
+                        $cortoEntityDescriptor[$descriptor] = self::merge(nvl($common, $descriptor), nvl($cortoEntityDescriptor, $descriptor));
                         unset($common[$descriptor]);
                     }
                 }
@@ -209,8 +209,7 @@ class Corto_Module_Metadata {
         return $meta;
     }
 
-    protected
-    function prepareLookuptables($metadata)
+    protected function prepareLookuptables($metadata)
     {
         $url2meta = array();
 
@@ -248,5 +247,22 @@ class Corto_Module_Metadata {
         }
         return $url2meta;
     }
+
+    private function merge($a, $b)
+    {
+        foreach ((array) $b as $k => $v) {
+            if (is_array($v)) {
+                if (!isset($a[$k])) {
+                    $a[$k] = $v;
+                } else {
+                    $a[$k] = self::merge($a[$k], $v);
+                }
+            } else {
+                $a[$k] = $v;
+            }
+        }
+        return $a;
+    }
+
 
 }

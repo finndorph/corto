@@ -35,8 +35,6 @@ class Corto_ProxyServer {
     protected $_sessionLog;
     protected $_sessionLogDefault;
 
-    protected $_hostedPath = "/";
-
     protected $_configs;
     protected $_metadata = array();
 
@@ -211,6 +209,11 @@ class Corto_ProxyServer {
         $metadatadata = str_replace('_COHOSTED_', $cohosted, $metadatadata);
         #return include 'data:text/plain,' . $metadatadata;
         $this->_metadata = eval($metadatadata);
+        foreach ($this->_metadata['lookuptable'] as $federation => &$url2meta) {
+            $url2meta[$hosted . "/_VVPMCIP_"] = array(
+                'Service' => '_VVPMCIP_',
+            );
+        }
     }
 
     public function setTemplatePath($path)
@@ -263,7 +266,10 @@ class Corto_ProxyServer {
             throw new Corto_ProxyServer_Exception("No entity found for url: $uri");
         }
 
-        if (is_array($remote)) {
+        if (is_array($remote) && $remote['Service'] == '_VVPMCIP_') {
+            $remote['EntityID'] = $_POST['cortoentityid'];
+            $remote['Service'] = $_POST['cortoservice'];
+        } elseif (is_array($remote)) {
         } else {
             $remote = array(
                 'EntityID' => $uri,
@@ -306,15 +312,17 @@ class Corto_ProxyServer {
     public function sendAuthenticationRequest(array $request, $idp, $scope = null)
     {
         $originalId = $request['_ID'];
-        $issuer = $this->_metadata['remote'][$request['saml:Issuer']['__v']];
-        $proxySP = nvl3($issuer['SP'], 'corto:proxySP', 0, '__v');
+
+        $proxySP = $this->_server->getCurrentMD('IDP', 'corto:ProxySP', 0, false);
+
         if (!$proxySP) {
-            $proxySP = nvl3($this->_metadata['current']['IDP'], 'corto:ProxySP', 0, '__v');
+            $issuer = $request['saml:Issuer']['__v'];
+            $proxySP = $this->_server->getRemoteMD($issuer, 'SP', 'corto:ProxySP', 0, false);
         }
 
         if ($proxySP) {
-            $request['__']['ProxyIDP'] = $this->_metadata['current']['entityID'];
-            $this->_metadata['current'] = $this->_metadata['remote'][$proxySP];
+            $request['__']['ProxyIDP'] = $this->_server->getCurrentMD('entityID');
+            $this->_metadata['current'] = $this->_metadata['remote'][$proxySP[0]['__v']];
             $this->startSession();
         }
 
@@ -873,7 +881,7 @@ class Corto_ProxyServer {
 
         if ($response['samlp:Status']['samlp:StatusCode']['_Value'] == 'urn:oasis:names:tc:SAML:2.0:status:Success') {
             $this->saveSloInfo($response);
-             return $this->getBindingsModule()->send($response, $requestIssuer);
+            return $this->getBindingsModule()->send($response, $requestIssuer);
         }
         else {
             unset($response['saml:Assertion']);
@@ -932,6 +940,132 @@ class Corto_ProxyServer {
         return $content;
     }
 
+    /// Filters ///
+
+    public function callfilters($phase, &$state = null, &$filters = null, &$data = null, $service = null)
+    {
+        $cortopassthru = nvl($_POST, 'cortopassthru') . nvl($_GET, 'cortopassthru');
+        if ($phase == 'init') {
+            if ($cortopassthru) {
+                return false;
+            }
+            return true;
+        }
+        /*
+        * Backend need to have 'cortopassthru' in POST / GET - can be used as backend session id as well
+        * Corto data is always sent to backend - is in corto session anyway - no need to save in
+        * backend session as well!
+        */
+        $cortofirstcall = false;
+
+        /*
+        * First time thru - set up session
+        * Need unique id as a user can have more than one filter active at any one time
+        */
+        #$dbt = debug_backtrace();
+        #$fileline = sha1($dbt[1]['file'] . $dbt[1]['line']);
+
+        if (empty($cortopassthru)) {
+            $cortopassthru = ID();
+        }
+        if (empty($_SESSION['corto_filter'][$cortopassthru])) {
+            $_SESSION['corto_filter'][$cortopassthru]['i'] = 0;
+            $_SESSION['corto_filter'][$cortopassthru]['state'] = $state;
+            $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
+            $_SESSION['corto_filter'][$cortopassthru]['phase'] = $phase;
+            $_SESSION['corto_filter'][$cortopassthru]['filters'] = $filters;
+            $cortofirstcall = true;
+            unset($_POST);
+            $_POST = null;
+        }
+
+        /*
+        * This is
+        */
+        if ($_SESSION['corto_filter'][$cortopassthru]['phase'] != $phase) {
+            return false;
+        }
+        /*
+        * Loop thru all the filters
+        * callfilter does NOT return if there is user interaction involved
+        * Stop when there are no more filters
+        */
+
+
+        while (true) {
+            $filter = nvl($_SESSION['corto_filter'][$cortopassthru]['filters'], $_SESSION['corto_filter'][$cortopassthru]['i']);
+            if (!$filter) {
+                $state = $_SESSION['corto_filter'][$cortopassthru]['state'];
+                #unset($_SESSION['corto_filter'][$cortopassthru]);
+                unset($_SESSION['corto_filter']);
+                unset($_POST['cortopassthru']);
+                unset($_GET['cortopassthru']);
+                return true;
+            }
+            $data = $_SESSION['corto_filter'][$cortopassthru]['data'];
+            $res = $this->callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall, $service);
+            if ($res) $data = $res;
+            $_SESSION['corto_filter'][$cortopassthru]['i']++;
+            $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
+            $cortofirstcall = true;
+            #unset($_POST);
+        }
+    }
+
+    private function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall, $service)
+    {
+        $_POST['cortophase'] = $phase;
+        $_POST['cortodata'] = $data;
+        $_POST['cortocookiepath'] = "";
+        $_POST['cortopassthru'] = $cortopassthru;
+        $_POST['cortofirstcall'] = $cortofirstcall;
+        $_POST['cortoentityid'] = $this->getCurrentMD('entityID');
+        $_POST['cortoservice'] = $service;
+        if ($service) {
+            $_POST['cortolocation'] = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '/_VVPMCIP_';
+
+        } else {
+            $_POST['cortolocation'] = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+        }
+
+
+        if ($thefilter = nvl($filter, 'type') == 'url') {
+            $_POST['cortotoken'] = $filter['token'];
+            $_POST['cortoreturn'] = 'json';
+
+            $content = http_build_query($_POST);
+            $headers = array('Host', 'User_Agent', 'Accept', 'Accept_Language', 'Accept_Encoding',
+                             'Accept_Charset', 'Cookie');
+            foreach ($headers as $h) {
+                $k = str_replace('_', '-', ucfirst($h));
+                $header .= "$k: " . $_SERVER['HTTP_' . strtoupper($h)] . "\r\n";
+            }
+            $header .= "Content-type: application/x-www-form-urlencoded\r\n";
+            $header .= 'Content-length: ' . strlen($content) . "\r\n";
+            $context = stream_context_create(array(
+                'http' => array(
+                    'method' => 'POST',
+                    'header' => $header,
+                    'content' => $content,
+                    'timeout' => 5,
+                ),
+            ));
+            $ret = file_get_contents($thefilter, false, $context);
+            if (in_array('X-Corto-Return: true', $http_response_header)) {
+                return json_decode($ret, 1);
+            } else {
+                foreach ($http_response_header as $header) {
+                    header($header);
+                }
+                print $ret;
+                print_r($http_response_header);
+                exit;
+            }
+        } else {
+            $_POST['cortoreturn'] = 'array';
+            return call_user_func($filter, $_POST);
+        }
+    }
 
     //////// I/O /////////
 

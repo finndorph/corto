@@ -31,7 +31,8 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      * @param  $arguments
      * @return void
      */
-    public function __call($name, array $arguments) {
+    public function __call($name, array $arguments)
+    {
         throw new Corto_Module_Services_Exception("No Service ($name) found for: " . print_r($arguments, 1));
     }
 
@@ -43,8 +44,10 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      *
      */
 
-    public function singleSignOnService($params) {
-        if (initfilters()) {
+    public function singleSignOnService($params)
+    {
+        if ($this->_server->callfilters('init')) {
+
             $request = $this->_server->getBindingsModule()->receiveRequest($params);
 
             /**
@@ -53,103 +56,57 @@ class Corto_Module_Services extends Corto_Module_Abstract {
              */
 
             if (nvl2($request, 'samlp:Scoping', '_ProxyCount') === 0) {
-                $this->_server->getSessionLog()->debug("SSO: Proxy count exceeded!");
                 $response = $this->_server->createErrorResponse($request, 'ProxyCountExceeded');
                 return $this->_server->sendResponseToRequestIssuer($request, $response);
             }
 
-            $filters = $this->_server->getCurrentMD('IDP', 'corto:requestfilter', null, array());
+            // Get all registered Single Sign On Services
+            $candidateIDPs = $this->_server->getAllowedIdps();
 
-            if ($filters) {
-                $filterparams = array(
-                    'request' => $request,
-                    'params' => $params,
-                    'server' => $this->_server,
-                );
-            }
-            $state = get_defined_vars();
-        }
-        if (dorequestfilter($state, $filters, $filterparams)) {
-            extract($state);
-            unset($state);
-
-            if (!$filters) {
-                // If we configured an IDPList in metadata this is our primary scoping
-                $scopedIDPs = $this->_server->getPresetIDPs();
-
-                /**
-                 * Add scoping in request to configured scoping - this is NOT according to the spec
-                 * which says that you MUST append to a received IDPList
-                 */
-                foreach ((array) nvl3($request, 'samlp:Scoping', 'samlp:IDPList', 'samlp:IDPEntry') as $IDPEntry) {
-                    $scopedIDPs[] = $IDPEntry['_ProviderID'];
-                }
-
-                // remove issuer + us from scope for use now ..
-                $requesterIDs = array($params['EntityID'], $request['saml:Issuer']['__v']);
-
-                // filter out already visited proxies (RequesterID) to prevent looping ...
-                foreach ((array) nvl2($request, 'samlp:Scoping', 'samlp:RequesterID') as $requesterID) {
-                    $requesterIDs[] = $requesterID['__v'];
-                }
-
-                $relevantScopedIDPs = array_diff($scopedIDPs, $requesterIDs);
-
-                // Get all registered Single Sign On Services
-                $candidateIDPs = $this->_server->getAllowedIdps();
-
-                // If we have scoping, filter out every non-scoped IdP
-                $scopedCandidateIDPs = array_intersect($relevantScopedIDPs, $candidateIDPs);
-
-                // give the cache filter a chance. Only returns if no suitable response was found
-                $cachefilter = $this->_server->getCurrentMD('IDP', 'corto:cachefilter', null, array());
-                if ($cachefilter) {
-                    $filterparams = array(
-                        'candidateIDPs' => $candidateIDPs,
-                        'request' => $request,
-                        'server' => $this->_server,
-                    );
-                }
-            }
-            $state = get_defined_vars();
-        }
-
-        if (docachefilter($state, $cachefilter, $filterparams)) {
-            extract($state);
-            unset($state);
-
-            if (!$filters) {
-
-                // 1+ candidate found and 1+ in scoped, send authentication request to the first one
-                if ($idp = array_shift($scopedCandidateIDPs)) {
-                    return $this->_server->sendAuthenticationRequest($request, $idp, $relevantScopedIDPs);
-                }
-
-                // No IdPs found! Send an error response back.
-                if (empty($candidateIDPs)) {
-                    $response = $this->_server->createErrorResponse($request, 'NoSupportedIDP');
-                    return $this->_server->sendResponseToRequestIssuer($request, $response);
-                }
-
-                // Store the request in the session
-                $_SESSION[$request['_ID']]['SAMLRequest'] = $request;
-
+            // No IdPs found! Send an error response back.
+            if (empty($candidateIDPs)) {
+                $response = $this->_server->createErrorResponse($request, 'NoSupportedIDP');
+                return $this->_server->sendResponseToRequestIssuer($request, $response);
             }
 
+            // If we configured an IDPList in metadata this is our primary scoping
+            $scopedIDPs = $this->_server->getPresetIDPs();
+
+            /**
+             * Add scoping in request to configured scoping - this is NOT according to the spec
+             * which says that you MUST append to a received IDPList
+             */
+            foreach ((array) nvl3($request, 'samlp:Scoping', 'samlp:IDPList', 'samlp:IDPEntry') as $IDPEntry) {
+                $scopedIDPs[] = $IDPEntry['_ProviderID'];
+            }
+
+            // remove issuer + us from scope for use now ..
+            $requesterIDs = array($params['EntityID'], $request['saml:Issuer']['__v']);
+
+            // filter out already visited proxies (RequesterID) to prevent looping ...
+            foreach ((array) nvl2($request, 'samlp:Scoping', 'samlp:RequesterID') as $requesterID) {
+                $requesterIDs[] = $requesterID['__v'];
+            }
+
+            $relevantScopedIDPs = array_diff($scopedIDPs, $requesterIDs);
+
+            // If we have scoping, filter out every non-scoped IdP
+            $scopedCandidateIDPs = array_intersect($relevantScopedIDPs, $candidateIDPs);
+
+            $state = array();
             $filters = $this->_server->getCurrentMD('IDP', 'corto:discoverfilter', null, array());
             if (!$filters) $filters = array('demoFilterClass::showWayf');
             $filterparams = array(
                 'request' => $request,
-                'params' => $params,
+                'scopedCandidateIDPs' => $scopedCandidateIDPs,
+                'relevantScopedIDPs' => $relevantScopedIDPs,
                 'server' => $this->_server,
             );
-            $state = get_defined_vars();
-
         }
 
         /* If we end up her we should show the wayf ... */
 
-        if (dodiscoveryfilter($state, $filters, $filterparams)) {
+        if ($this->_server->callfilters("discovery", $state, $filters, $filterparams)) {
         }
     }
 
@@ -161,7 +118,8 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      *
      */
 
-    public function SingleLogoutService(array $params) {
+    public function SingleLogoutService(array $params)
+    {
         $message = $this->_server->getBindingsModule()->receiveRequest($params);
         if ('samlp:LogoutRequest' == $message['__t']) {
             $this->_server->sloinit($message);
@@ -181,8 +139,9 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      * @return void
      */
 
-    public function assertionConsumerService($params) {
-        if (initfilters()) {
+    public function assertionConsumerService($params)
+    {
+        if ($this->_server->callfilters('init')) {
             $receivedResponse = $this->_server->getBindingsModule()->receiveResponse($params);
 
 // Get the ID of the Corto Request message
@@ -194,23 +153,20 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
             $state = get_defined_vars();
             $filterparams = array('request' => $receivedRequest,
-                'response' => $receivedResponse,
-                'server' => $this->_server,);
+                                  'response' => $receivedResponse,
+                                  'server' => $this->_server,);
             $filters = array_merge(
                 $this->_server->getRemoteMD($receivedResponse['saml:Issuer']['__v'], 'IDP', 'corto:responseInputFilter', null, array()),
                 $this->_server->getCurrentMD('SP', 'corto:responseOutputFilter', null, array()));
-
         }
 
 // SP side filters
 
-        if (doresponseinputfilters($state, $filters, $filterparams)) {
-
+        if ($this->_server->callfilters("responsein", $state, $filters, $filterparams)) {
             extract($state);
             unset($state);
             $receivedResponse = $filterparams['response'];
             unset($filterparams);
-
 
             $proxySP = null;
 // @todo cross federation bridging NOT - we can't guarantee the uniqueness of entityid's !!!
@@ -220,41 +176,27 @@ class Corto_Module_Services extends Corto_Module_Abstract {
                 $this->_server->startSession();
             }
 
-            $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse, $proxySP);
-            $state = get_defined_vars();
-            $filterparams = array('request' => $receivedRequest,
-                'response' => $receivedResponse,
-                'server' => $this->_server,);
-            $filters = array_merge(
-                $this->_server->getCurrentMD('IDP', 'corto:responseOutputFilter', null, array()),
-                $this->_server->getRemoteMD($receivedRequest['saml:Issuer']['__v'], 'SP', 'corto:responseOutputFilter', null, array()));
-        }
-
-// IDP side filters
-
-        if (doresponseoutputfilters($state, $filters, $filterparams)) {
-            extract($state);
-            unset($state);
-            $receivedResponse = $filterparams['response'];
-            unset($filterparams);
-            return $this->_server->sendResponseToRequestIssuer($receivedRequest, $receivedResponse);
+            $_SESSION['cachedresponses'][$receivedResponse['saml:Issuer']['__v']] = $receivedResponse;
+            $this->AssertionConsumerService2($receivedRequest, $receivedResponse, $proxySP);
         }
     }
 
-    public function internalAssertionConsumerService($receivedRequest, $receivedResponse, $proxySP) {
-        $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse, $proxySP);
-        $state = array();
-        $filterparams = array('request' => $receivedRequest,
-            'response' => $receivedResponse,
-            'server' => $this->_server,);
-        $filters = array_merge(
-            $this->_server->getCurrentMD('IDP', 'corto:responseOutputFilter', null, array()),
-            $this->_server->getRemoteMD($receivedRequest['saml:Issuer']['__v'], 'SP', 'corto:responseOutputFilter', null, array()));
+    public function AssertionConsumerService2($receivedRequest = null, $receivedResponse = null, $proxySP = null)
+    {
 
+        if ($this->_server->callfilters('init')) {
+            $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse, $proxySP);
+            $state = get_defined_vars();
+            $filterparams = array('request' => $receivedRequest,
+                                  'response' => $receivedResponse,
+                                  'server' => $this->_server,);
+            $filters = array_merge(
+                $this->_server->getCurrentMD('IDP', 'corto:responseOutputFilter', null, array()),
+                $this->_server->getRemoteMD($receivedRequest['saml:Issuer']['__v'], 'SP', 'corto:responseOutputFilter', null, array()));
 
-// IDP side filters
-
-        if (doresponseoutputfilters($state, $filters, $filterparams)) {
+            // IDP side filters
+        }
+        if ($this->_server->callfilters("responseout", $state, $filters, $filterparams, __FUNCTION__)) {
             extract($state);
             unset($state);
             $receivedResponse = $filterparams['response'];
@@ -269,7 +211,8 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      * @return void
      */
 
-    public function artifactResolutionService() {
+    public function artifactResolutionService()
+    {
         $postData = Corto_XmlToArray::xml2array(file_get_contents("php://input"));
         $artifact = $postData['SOAP-ENV:Body']['samlp:ArtifactResolve']['saml:Artifact']['__v'];
 
@@ -300,7 +243,8 @@ class Corto_Module_Services extends Corto_Module_Abstract {
      * @return void
      */
 
-    public function metadataservice() {
+    public function metadataservice()
+    {
         header('Content-type: application/samlmetadata+xml');
         $md = $this->_server->getCurrentMD('original');
         print(Corto_XmlToArray::array2xml($md, 'md:EntityDescriptor'));

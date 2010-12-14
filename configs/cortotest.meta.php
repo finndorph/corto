@@ -147,7 +147,7 @@ return array(
                                         array(
                                             '_Name' => 'corto:cachefilter',
                                             'saml:AttributeValue' => array(
-                                                'DemoFilterClass::democache',
+                                                array('__v' => 'DemoFilterClass::democache'),
                                             ),
                                         ),
                                     ),

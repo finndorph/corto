@@ -8,6 +8,9 @@
         <form method="post" action="<?= $action ?>">
             <input type="hidden" name="cortopassthru" value="<?= $cortopassthru ?>" />
             <input type="hidden" name="consent" value="yes" />
+            <input type="hidden" name="cortoentityid" value="<?= $cortoentityid ?>" />
+            <input type="hidden" name="cortoservice" value="<?= $cortoservice ?>" />
+            <input type="hidden" name="consent" value="yes" />
             Do you consent to the following information being sent to your Service Provider:
             <?php foreach ($attributes as $uid => $attributeValues) { ?>
             <dl style="margin-left: 60px;">

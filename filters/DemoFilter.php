@@ -2,10 +2,33 @@
 
 class DemoFilterClass {
 
+    /**
+     * This is a wayf/discovery AND scoping AND caching filter ...
+     * Ie. ALL decisions about using cached responses, sending to scoped idps or
+     * using wayf are taken here ...
+     * Deciding which responses to cache is done in 
+     * @static
+     * @param  $params
+     * @return void
+     */
+
     static function showWayf($params)
     {
         $request = $params['cortodata']['request'];
         $server = $params['cortodata']['server'];
+        $scopedCandidateIDPs = $params['cortodata']['scopedCandidateIDPs'];
+        $relevantScopedIDPs = $params['cortodata']['relevantScopedIDPs'];
+        
+        if ($idp = array_shift($scopedCandidateIDPs)) {
+            $server->sendAuthenticationRequest($request, $idp, $relevantScopedIDPs);
+        }
+
+        #$candidateIDPs = $params['candidateIDPs'];
+        # $cachedIDPs = array_keys((array) nvl($_SESSION, 'cachedresponses'));
+        # if ($cachedCandidateIDPs = array_intersect($candidateIDPs, $cachedIDPs)) {
+        #     return $_SESSION['cachedresponses'][reset($cachedCandidateIDPs)];
+        # }
+
 
         if ($idp = nvl($_POST, '_idp_')) {
             $server->sendAuthenticationRequest($request, $idp);
@@ -26,55 +49,38 @@ class DemoFilterClass {
     }
 
     static function democonsent($params)
-     {
-         $server = $params['cortodata']['server'];
-         if ($params['cortofirstcall']) {
-             $response = $params['cortodata']['response'];
+    {
+        $server = $params['cortodata']['server'];
+        if ($params['cortofirstcall']) {
+            $response = $params['cortodata']['response'];
 
-             $attributes = attributes2array(
-                 $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
-             );
+            $attributes = attributes2array(
+                $response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute']
+            );
 
-             print $server->renderTemplate(
-                 'consent',
-                 array(
-                     'action' => $params['cortolocation'],
-                     'attributes' => $attributes,
-                     'cortopassthru' => $params['cortopassthru'],
-                 ));
-             exit;
-         }
-         if (nvl($_POST, 'consent') !== 'yes') {
-             print $server->renderTemplate('noconsent');
-             exit;
-         }
-         #return $params['cortodata'];
-     }
+            print $server->renderTemplate(
+                'consent',
+                array(
+                    'action' => $params['cortolocation'],
+                    'attributes' => $attributes,
+                    'cortopassthru' => $params['cortopassthru'],
+                    'cortoentityid' => $params['cortoentityid'],
+                    'cortoservice' => $params['cortoservice'],
+                ));
+            exit;
+        }
+        if (nvl($_POST, 'consent') !== 'yes') {
+            print $server->renderTemplate('noconsent');
+            exit;
+        }
+    }
 
-    static function democache($params)
-     {
-         $server = $params['cortodata']['server'];
-         if ($params['cortofirstcall']) {
-             $cd = $params['cortodata'];
-
-             print_r($cd['candidateIDPs']);
-             print_r($cd['request']);
-              print $server->renderTemplate(
-                 'consent',
-                 array(
-                     'action' => $params['cortolocation'],
-                     'attributes' => array('cache' => 'cache'),
-                     'cortopassthru' => $params['cortopassthru'],
-                 ));
-             exit;
-         }
-         if (nvl($_POST, 'consent') !== 'yes') {
-             print $server->renderTemplate('noconsent');
-             exit;
-         }
-         #return $params['cortodata'];
-     }
-
+    /**
+     * NO UI allowed - poor mans continuations can't handle it!
+     * @static
+     * @param  $params
+     * @return
+     */
 
     static function demofilter()
     {
@@ -104,7 +110,7 @@ class DemoFilterClass {
             </html>
 
             <?php
-            exit;
+                                        exit;
         }
         $samlattribute = &$_SESSION['DemoFilterClassState']['response']
         ['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
