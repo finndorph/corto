@@ -26,7 +26,7 @@ try {
 
     include ('../configs/corto.mdmgmt.php');
 
-    $server->setMetadata($metadatafile);
+    $server->setMetadata('/var/tmp/corto_optimized_metadata.php');
 
     $server->setTemplatePath(dirname(__FILE__) . '/../templates/');
 
