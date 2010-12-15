@@ -12,17 +12,6 @@ return array(
             'md:EntityDescriptor' => array(
                 array(
                     '_entityID' => '_COMMON_',
-
-                    'md:Extensions' => array(
-                        'saml:Attribute' => array(
-                            array(
-                                '_Name' => 'corto:sharedkey',
-                                'saml:AttributeValue' => array(
-                                    array('__v' => 'abrakadabra'),
-                                ),
-                            ),
-                        ),
-                    ),
                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',

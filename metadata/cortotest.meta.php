@@ -13,18 +13,6 @@ return array(
             'md:EntityDescriptor' => array(
                 array(
                     '_entityID' => '_COHOSTED_/index.php',
-                    'md:Extensions' => array(
-                        'mdattr:EntityAttributes' => array(
-                            'saml:Attribute' => array(
-                                array(
-                                    '_Name' => 'corto:sharedkey',
-                                    'saml:AttributeValue' => array(
-                                        array('__v' => 'abrakadabra'),
-                                    ),
-                                ),
-                            )
-                        ),
-                    ),
                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
@@ -63,6 +51,7 @@ return array(
                                 array(
                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
                                     '_Location' => '_HOSTED_/corto/SPSLO',
+                                    '_index' => 1,
                                 ),
                             ),
                         ),
@@ -80,6 +69,7 @@ return array(
                                 array(
                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
                                     '_Location' => '_HOSTED_/corto/IDPSLO',
+                                    '_index' => 1,
                                 ),
                             ),
                         ),
@@ -87,18 +77,6 @@ return array(
                 ),
                 array(
                     '_entityID' => '_HOSTED_/sp',
-                    'md:Extensions' => array(
-                        'mdattr:EntityAttributes' => array(
-                            'saml:Attribute' => array(
-                                array(
-                                    '_Name' => 'corto:sharedkey',
-                                    'saml:AttributeValue' => array(
-                                        array('__v' => 'abrakadabra'),
-                                    ),
-                                ),
-                            ),
-                        ),
-                    ),
                     'md:SPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
@@ -306,18 +284,6 @@ return array(
                 ),
                 array(
                     '_entityID' => '_COHOSTED_/null.php',
-                    'md:Extensions' => array(
-                        'mdattr:EntityAttributes' => array(
-                            'saml:Attribute' => array(
-                                array(
-                                    '_Name' => 'corto:sharedkey',
-                                    'saml:AttributeValue' => array(
-                                        array('__v' => 'abrakadabra'),
-                                    ),
-                                ),
-                            )
-                        ),
-                    ),
                     'md:IDPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',

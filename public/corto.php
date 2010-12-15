@@ -1,6 +1,5 @@
 <?php
 error_reporting(E_ALL);
-session_save_path('/tmp');
 
 set_error_handler('error2exception', E_ALL);
 

@@ -10,57 +10,100 @@
  * The metadata file should be writable by the caller and readable by the corto webserver.
  *
  */
+
+
 class Corto_Module_Metadata {
 
     protected static $descriptors = array('SP', 'IDP');
     protected static $services = array('AssertionConsumerService', 'ArtifactResolutionService', 'SingleSignOnService', 'SingleLogoutService');
     protected static $signings = array('WantAuthnRequestsSigned', 'WantAssertionsSigned', 'AuthnRequestsSigned', 'WantResponsesSigned');
 
-    public function prepareMetadata($metadatasources, $metadatafile) {
-        $md = array();
+    public function prepareMetadata($metadatasources, $metadatapath, $cortoinstance) {
+        $md = array('public' => array(), 'private' => array(), 'remote' => array());
         foreach ($metadatasources as $source) {
-            $md = self::merge($md, self::optimizeMetaData(self::retrieveMetadata($source), (array) nvl($md, '_COMMON_')));
+            list($type, $tmpmd) = self::retrieveMetadata($source);
+            $md[$type] = self::merge($md[$type], $tmpmd);
         }
-        unset($md['_COMMON_']);
-        $export = array('md' => $md, 'lookuptable' => $this->prepareLookuptables($md));
-        file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
-        @rename($metadatafile . '.tmp', $metadatafile);
+
+        $mdprefix = $metadatapath . $cortoinstance . '.';
+        $publicmdfile = realpath($mdprefix . 'public.metadata');
+        $optimizedmdfile = realpath($mdprefix . 'optimized.metadata');
+
+        if (!($publicmdfile && $optimizedmdfile)) die("Can't export to $mdprefix" . "$cortoinstance...\n");
+
+        $public = $md['public'];
+
+        if ($entitymd = nvl($md['public'], 'md:EntityDescriptor')) {
+            $md['public'] = array('md:EntitiesDescriptor' => $md['public']);   
+        }
+
+        foreach ((array) $md['public']['md:EntitiesDescriptor'] as $entitiesDescriptor) {
+            foreach ((array) $entitiesDescriptor['md:EntityDescriptor'] as $entityDescriptor) {
+                $public[$entityDescriptor['_entityID']] = $entityDescriptor;
+            }
+        }
+        
+        unset($public['_COMMON_']);
+
+        file_put_contents($publicmdfile . '.tmp', "return " . var_export($public, true) . ";");
+        @rename($publicmdfile . '.tmp', $publicmdfile);
+
+        print "Exporting $publicmdfile\n";
+
+        $optimized = self::optimizeMetaData('public', $md);
+
+        $optimized = self::merge($optimized, self::optimizeMetaData('private', $md, $optimized));
+
+        $url2service = self::prepareLookuptables($optimized);
+
+        $optimized = self::merge($optimized, self::optimizeMetaData('remote', $md, $optimized));
+
+        $export = array('md' => $optimized, 'lookuptable' => $url2service);
+        file_put_contents($optimizedmdfile . '.tmp', "return " . var_export($export, true) . ";");
+        @rename($optimizedmdfile . '.tmp', $optimizedmdfile);
+        print "Exporting $optimizedmdfile\n";
 
     }
 
-    public function getMetadata($metadatafile) {
-        return include $metadatafile;
-    }
-
-    protected static function retrieveMetadata($source) {
-        if (is_array($source)) {
-            return $source;
-        }
-        $type = 'xml';
-        if (preg_match("/^(xml|php|json|array):(.*)/", $source, $dollar)) {
-            $type = $dollar[1];
-            $source = $dollar[2];
+    protected static function retrieveMetadata($mdspec) {
+        $type = 'public';
+        $format = 'xml';
+        if (is_array($mdspec)) {
+            $type = 'private';
+            $format = 'array';
+        } elseif (preg_match("/^(private|public|remote):(xml|php|json|array):(.*)/", $mdspec, $dollar)) {
+            list($dummy, $type, $format, $source) = $dollar;
         }
 
-        switch ($type) {
+        print "Importing $mdspec\n";
+
+        switch ($format) {
             case 'xml':
-                return Corto_XmlToArray::xml2array(file_get_contents($source), true);
+                $res = Corto_XmlToArray::xml2array(file_get_contents($source), true);
                 break;
             case 'php':
                 // the included file must return an array
-                return include $source;
+                $res = include $source;
                 break;
             case 'json':
-                return json_decode(file_get_contents($source), 1);
+                $res = json_decode(file_get_contents($source), 1);
+                break;
+            case 'array':
+                $res = $mdspec;
                 break;
         }
+        return array($type, $res);
     }
 
-    protected static function optimizeMetaData($rawmeta, $commonmd = array()) {
+    protected static function optimizeMetaData($type, $md, $optimized = array()) {
         // @note remember not to set keys for things that might be overidden by merged md
         // ie. set ['saveSLOInfo'] to true, but do not set the ['saveSLOInfo'] at all
         // when false as it WILL overwrite the true !!!
         $meta = array();
+        $rawmeta = $md[$type];
+        $commonmd = self::merge(nvl($optimized, '_COMMON_'), nvl($rawmeta, '_COMMON_'));
+        unset($rawmeta['_COMMON_']);
+
         if ($entitymd = nvl($rawmeta, 'md:EntityDescriptor')) {
             $rawmeta['md:EntitiesDescriptor'] = array(
                 array(
@@ -86,7 +129,6 @@ class Corto_Module_Metadata {
                 if (empty($entityDescriptor['_entityID'])) $entityDescriptor['_entityID'] = '_COMMON_';
                 $cortoEntityDescriptor = array();
                 $cortoEntityDescriptor['entityID'] = $entityDescriptor['_entityID'];
-                $cortoOriginals[$entityDescriptor['_entityID']] = $entityDescriptor;
 
                 foreach ((array) nvl3($entityDescriptor, 'md:Extensions', 'mdattr:EntityAttributes', 'saml:Attribute') as $attribute) {
                     foreach ((array) $attribute['saml:AttributeValue'] as $attributeValue) {
@@ -191,7 +233,7 @@ class Corto_Module_Metadata {
         return $meta;
     }
 
-    protected function prepareLookuptables($metadata) {
+    protected static function prepareLookuptables($metadata) {
         $url2meta = array();
 
         foreach ($metadata as $id => $entity) {
@@ -227,7 +269,8 @@ class Corto_Module_Metadata {
         return $url2meta;
     }
 
-    private function merge($a, $b) {
+    private static function merge($a, $b) {
+        if (is_null($a)) $a = array();
         foreach ((array) $b as $k => $v) {
             if (is_array($v)) {
                 if (!isset($a[$k])) {
