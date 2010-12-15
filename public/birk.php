@@ -28,7 +28,7 @@ try {
 /*
  * If called without path - use index.php
  */
-    $metadatafile = '../configs/birk_optimized_metadata.php';
+    $metadatafile = '../metadata/birk_optimized_metadata.php';
 
     if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] == '/moc.elgoog-ACS' || $_SERVER['PATH_INFO'] == '/ude@evil-ACS') {
         $server->setMetadata($metadatafile);

@@ -18,9 +18,9 @@ preg_match("/^([^\.]+)/", basename(__FILE__), $dollar);
 $federation = $dollar[1];
 
 $metadatasources = array(
-    'php:' . dirname(__FILE__) . '/../configs/cortotest.common.meta.php',
-    'php:' . dirname(__FILE__) . '/../configs/cortotest.privateparts.meta.php',
-    'php:' . dirname(__FILE__) . '/../configs/cortotest.meta.php',
+    'php:' . dirname(__FILE__) . '/../metadata/cortotest.common.meta.php',
+    'php:' . dirname(__FILE__) . '/../metadata/cortotest.privateparts.meta.php',
+    'php:' . dirname(__FILE__) . '/../metadata/cortotest.meta.php',
 );
 
 $metadatafile = $federation . '.optimized.metadata.php';

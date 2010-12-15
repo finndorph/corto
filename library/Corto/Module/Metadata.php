@@ -86,7 +86,7 @@ class Corto_Module_Metadata {
                 if (empty($entityDescriptor['_entityID'])) $entityDescriptor['_entityID'] = '_COMMON_';
                 $cortoEntityDescriptor = array();
                 $cortoEntityDescriptor['entityID'] = $entityDescriptor['_entityID'];
-                $cortoEntityDescriptor['original'] = $entityDescriptor;
+                $cortoOriginals[$entityDescriptor['_entityID']] = $entityDescriptor;
 
                 foreach ((array) nvl3($entityDescriptor, 'md:Extensions', 'mdattr:EntityAttributes', 'saml:Attribute') as $attribute) {
                     foreach ((array) $attribute['saml:AttributeValue'] as $attributeValue) {

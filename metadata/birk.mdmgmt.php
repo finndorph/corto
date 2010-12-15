@@ -157,7 +157,7 @@ function preparemetadataforbirk($metadatafile, $really = false)
                     $commonmd,
                 ),
                 'public' => array(
-                    'php:' . dirname(__FILE__) . '/../configs/birk.meta.php',
+                    'php:' . dirname(__FILE__) . '/../metadata/birk.meta.php',
                     'https://betawayf.wayf.dk/saml2/idp/metadata.php',
                     dirname(__FILE__) . '/wayf.prod.md.xml',
                 ),
