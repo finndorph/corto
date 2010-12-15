@@ -128,7 +128,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $deflate = $binding == self::HTTPRedirect || $binding == self::JSONRedirect;
         $json = $binding == self::JSONRedirect || $binding == self::JSONPOST;
         $req = $post ? $_POST : $_GET;
-        # live@edu hack - advertis as redirect but accept post ...
+        # live@edu hack - advertise as redirect but accept post ...
         if (nvl($_POST, $key)) {
             $post = true;
             $deflate = false;

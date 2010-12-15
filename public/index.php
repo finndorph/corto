@@ -14,7 +14,7 @@ function demoapp() {
 
     $corto = join("/", array_slice(explode("/", 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME']), 0, -1));
 
-    $self = $corto . '/corto.php';
+    $self = $corto . '/index.php';
     $corto = $corto . '/corto.php';
     if (isset($_POST['doslo'])) {
         $request = array(
@@ -79,7 +79,6 @@ function demoapp() {
         'demo',
         array(
             'action' => $self,
-            #                'idps' => array_keys($GLOBALS['metabase']['remote']),
             'SAMLResponse' => $SAMLResponse,
             'message' => "RelayState: " . nvl($_GET, 'RelayState'),
             'self' => $self)

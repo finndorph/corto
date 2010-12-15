@@ -169,7 +169,6 @@ class Corto_Module_Services extends Corto_Module_Abstract {
             unset($filterparams);
 
             $proxySP = null;
-// @todo cross federation bridging NOT - we can't guarantee the uniqueness of entityid's !!!
             if ($proxyIDP = nvl($receivedRequest['__'], 'ProxyIDP')) {
                 $proxySP = $params['EntityID'];
                 $this->_server->setCurrentEntity($proxyIDP);

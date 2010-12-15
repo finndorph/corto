@@ -12,7 +12,7 @@ return array(
             '_xmlns:mdattr' => 'urn:oasis:names:tc:SAML:metadata:attribute',
             'md:EntityDescriptor' => array(
                 array(
-                    '_entityID' => '_HOSTED_',
+                    '_entityID' => '_COHOSTED_/index.php',
                     'md:Extensions' => array(
                         'mdattr:EntityAttributes' => array(
                             'saml:Attribute' => array(
@@ -31,7 +31,7 @@ return array(
                             'md:AssertionConsumerService' => array(
                                 array(
                                     '_Binding' => 'JSON-Redirect',
-                                    '_Location' => '_COHOSTED_/index.php/ACS',
+                                    '_Location' => '_COHOSTED_/index.php',
                                     '_index' => 1,
                                 ),
                             ),
@@ -52,7 +52,7 @@ return array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
                             'md:AssertionConsumerService' =>
                             array(
-                                 array(
+                                array(
                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
                                     '_Location' => '_HOSTED_/corto/ASC',
                                     '_index' => 1,
@@ -60,17 +60,17 @@ return array(
                                 ),
                             ),
                             'md:SingleLogoutService' => array(
-                                 array(
-                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-                                     '_Location' => '_HOSTED_/corto/SPSLO',
-                                 ),
-                             ),
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                                    '_Location' => '_HOSTED_/corto/SPSLO',
+                                ),
+                            ),
                         ),
                     ),
                     'md:IDPSSODescriptor' => array(
                         array(
                             '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
-                             'md:SingleSignOnService' => array(
+                            'md:SingleSignOnService' => array(
                                 array(
                                     '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
                                     '_Location' => '_HOSTED_/corto/SSO',
@@ -86,6 +86,84 @@ return array(
                     ),
                 ),
                 array(
+                    '_entityID' => '_HOSTED_/sp',
+                    'md:Extensions' => array(
+                        'mdattr:EntityAttributes' => array(
+                            'saml:Attribute' => array(
+                                array(
+                                    '_Name' => 'corto:sharedkey',
+                                    'saml:AttributeValue' => array(
+                                        array('__v' => 'abrakadabra'),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    'md:SPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:AssertionConsumerService' =>
+                            array(
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => '_HOSTED_/sp/Boy1',
+                                    '_index' => 3,
+                                ),
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => '_HOSTED_/sp/Boy2',
+                                    '_index' => 4,
+                                ),
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => '_HOSTED_/sp/David',
+                                    '_index' => 2,
+                                    '_isDefault' => true,
+                                ),
+                                array(
+                                    '_Binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                                    '_Location' => '_HOSTED_/sp/Boy4',
+                                    '_index' => 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                    'md:IDPSSODescriptor' => array(
+                        array(
+                            '_protocolSupportEnumeration' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+                            'md:Extensions' => array(
+                                'mdattr:EntityAttributes' => array(
+                                    'saml:Attribute' => array(
+                                        array(
+                                            '_Name' => 'corto:IDPList',
+                                            'saml:AttributeValue' => array(
+                                                array('__v' => '_HOSTED_/idpwayf'),
+                                            ),
+                                        ),
+                                        array(
+                                            '_Name' => 'corto:cacheResponse',
+                                            'saml:AttributeValue' => array(
+                                                array('__v' => 'true'),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            'md:SingleSignOnService' => array(
+                                array(
+                                    '_Binding' => 'JSON-Redirect',
+                                    '_Location' => '_HOSTED_/sp/Mads',
+                                ),
+                            ),
+                            'md:SingleLogoutService' => array(
+                                array(
+                                    '_Binding' => 'JSON-Redirect',
+                                    '_Location' => '_HOSTED_/sp/Mads/SLO',
+                                ),
+                            ),
+                        ),
+                    ),
+                ), array(
                     '_entityID' => '_HOSTED_/idpwayf',
                     'md:IDPSSODescriptor' => array(
                         array(
