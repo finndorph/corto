@@ -158,7 +158,7 @@ return array(
                                         array(
                                             '_Name' => 'corto:responseOutputFilter',
                                             'saml:AttributeValue' => array(
-                                                'DemoFilterClass::democonsent',
+                                                array('__v' => 'DemoFilterClass::democonsent'),
                                             ),
                                         ),
                                         array(

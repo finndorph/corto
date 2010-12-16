@@ -28,17 +28,17 @@ class Corto_ProxyServer {
     const MESSAGE_TYPE_REQUEST = 'SAMLRequest';
     const MESSAGE_TYPE_RESPONSE = 'SAMLResponse';
 
-    protected $_responseArray;
-
     protected $_server;
+    protected $_metadatapath;
+    protected $_cortoinstance;
+    protected $_hosted;
+    protected $_cohosted;
     protected $_systemLog;
     protected $_sessionLog;
     protected $_sessionLogDefault;
 
-    protected $_configs;
     protected $_metadata = array();
 
-    protected $_attributes = array();
     protected $_modules = array();
     protected $_templatePath;
 
@@ -133,6 +133,12 @@ class Corto_ProxyServer {
 
     }
 
+    public function getPublicMetadata($entityID)
+    {
+        $publicmetadata = require $this->_metadatapath . $this->_cortoinstance . '.public.metadata.php';
+        $publicmetadata = $this->rehost($publicmetadata, $this->_hosted, $this->_cohosted);
+        return nvl($publicmetadata, $entityID);
+    }
 
     public function selfUrl($entityid = null)
     {
@@ -193,20 +199,20 @@ class Corto_ProxyServer {
     }
 
 
-    public function setMetadata($metadatafile)
+    public function setMetadata($metadatapath, $cortoinstance, $rehost = false)
     {
         /**
          * This is to allow the default metadata to be independent of the location of corto
          * Replaces _HOSTED_ with the actual location
          */
-        $hosted = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
-        $cohosted = join("/", array_slice(explode("/", $hosted), 0, -1));
-
-        $metadatadata = file_get_contents($metadatafile);
-        $metadatadata = str_replace('_HOSTED_', $hosted, $metadatadata);
-        $metadatadata = str_replace('_COHOSTED_', $cohosted, $metadatadata);
-        #return include 'data:text/plain,' . $metadatadata;
-        $this->_metadata = eval($metadatadata);
+        $this->_cortoinstance = $cortoinstance;
+        $this->_metadatapath = $metadatapath;
+        $this->_hosted = $hosted = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
+        $this->_cohosted = $cohosted = join("/", array_slice(explode("/", $hosted), 0, -1));
+        $this->_metadata = require $metadatapath . $cortoinstance . '.optimized.metadata.php';
+        if ($rehost) {
+            $this->_metadata = $this->rehost($this->_metadata, $hosted, $cohosted);
+        }
         $this->_metadata['lookuptable'][$hosted . "/_VVPMCIP_"] = array(
             'Service' => '_VVPMCIP_',
         );
@@ -216,6 +222,22 @@ class Corto_ProxyServer {
     {
         $this->_templatePath = $path;
         return $this;
+    }
+
+    private function rehost($md, $host, $cohost)
+    {
+        foreach ($md as $k => $v) {
+            $k = str_replace('_HOSTED_', $host, $k);
+            $k = str_replace('_COHOSTED_', $cohost, $k);
+            if (is_array($v)) {
+                $hosted[$k] = self::rehost($v, $host, $cohost);
+            } else {
+                $v = str_replace('_HOSTED_', $host, $v);
+                $v = str_replace('_COHOSTED_', $cohost, $v);
+                $hosted[$k] = $v;
+            }
+        }
+        return $hosted;
     }
 
     //////// MAIN /////////
@@ -312,7 +334,7 @@ class Corto_ProxyServer {
 
         if ($proxySP) {
             $request['__']['ProxyIDP'] = $this->_server->getCurrentMD('entityID');
-            $this->_metadata['current'] = $this->_metadata['md'][$proxySP[0]['__v']];
+            $this->_metadata['current'] = $this->_metadata['md'][$proxySP[0]];
             $this->startSession();
         }
 

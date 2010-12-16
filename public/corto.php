@@ -25,7 +25,7 @@ try {
 
     $federation = $dollar[1];
 
-    $server->setMetadata('../metadata/' . $federation . '.optimized.metadata.php');
+    $server->setMetadata('../metadata/', $federation, true);
 
     $server->setTemplatePath(dirname(__FILE__) . '/../templates/');
 

@@ -245,7 +245,8 @@ class Corto_Module_Services extends Corto_Module_Abstract {
     public function metadataservice()
     {
         header('Content-type: application/samlmetadata+xml');
-        $md = $this->_server->getCurrentMD('original');
+        $entity = $this->_server->getCurrentMD('entityID');
+        $md = $this->_server->getPublicMetadata($entity);
         print(Corto_XmlToArray::array2xml($md, 'md:EntityDescriptor'));
     }
 

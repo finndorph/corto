@@ -18,7 +18,8 @@ class Corto_Module_Metadata {
     protected static $services = array('AssertionConsumerService', 'ArtifactResolutionService', 'SingleSignOnService', 'SingleLogoutService');
     protected static $signings = array('WantAuthnRequestsSigned', 'WantAssertionsSigned', 'AuthnRequestsSigned', 'WantResponsesSigned');
 
-    public function prepareMetadata($metadatasources, $metadatapath, $cortoinstance) {
+    public function prepareMetadata($metadatasources, $metadatapath, $cortoinstance)
+    {
         $md = array('public' => array(), 'private' => array(), 'remote' => array());
         foreach ($metadatasources as $source) {
             list($type, $tmpmd) = self::retrieveMetadata($source);
@@ -26,15 +27,13 @@ class Corto_Module_Metadata {
         }
 
         $mdprefix = $metadatapath . $cortoinstance . '.';
-        $publicmdfile = realpath($mdprefix . 'public.metadata');
-        $optimizedmdfile = realpath($mdprefix . 'optimized.metadata');
+        $publicmdfile = $mdprefix . 'public.metadata.php';
+        $optimizedmdfile = $mdprefix . 'optimized.metadata.php';
 
-        if (!($publicmdfile && $optimizedmdfile)) die("Can't export to $mdprefix" . "$cortoinstance...\n");
-
-        $public = $md['public'];
+        #if (!($publicmdfile && $optimizedmdfile)) die("Can't export to $mdprefix" . "$cortoinstance...\n");
 
         if ($entitymd = nvl($md['public'], 'md:EntityDescriptor')) {
-            $md['public'] = array('md:EntitiesDescriptor' => $md['public']);   
+            $md['public'] = array('md:EntitiesDescriptor' => $md['public']);
         }
 
         foreach ((array) $md['public']['md:EntitiesDescriptor'] as $entitiesDescriptor) {
@@ -42,10 +41,10 @@ class Corto_Module_Metadata {
                 $public[$entityDescriptor['_entityID']] = $entityDescriptor;
             }
         }
-        
+
         unset($public['_COMMON_']);
 
-        file_put_contents($publicmdfile . '.tmp', "return " . var_export($public, true) . ";");
+        file_put_contents($publicmdfile . '.tmp', "<?php\nreturn " . var_export($public, true) . ";");
         @rename($publicmdfile . '.tmp', $publicmdfile);
 
         print "Exporting $publicmdfile\n";
@@ -59,13 +58,13 @@ class Corto_Module_Metadata {
         $optimized = self::merge($optimized, self::optimizeMetaData('remote', $md, $optimized));
 
         $export = array('md' => $optimized, 'lookuptable' => $url2service);
-        file_put_contents($optimizedmdfile . '.tmp', "return " . var_export($export, true) . ";");
+        file_put_contents($optimizedmdfile . '.tmp', "<?php\nreturn " . var_export($export, true) . ";");
         @rename($optimizedmdfile . '.tmp', $optimizedmdfile);
         print "Exporting $optimizedmdfile\n";
-
     }
 
-    protected static function retrieveMetadata($mdspec) {
+    protected static function retrieveMetadata($mdspec)
+    {
         $type = 'public';
         $format = 'xml';
         if (is_array($mdspec)) {
@@ -95,7 +94,8 @@ class Corto_Module_Metadata {
         return array($type, $res);
     }
 
-    protected static function optimizeMetaData($type, $md, $optimized = array()) {
+    protected static function optimizeMetaData($type, $md, $optimized = array())
+    {
         // @note remember not to set keys for things that might be overidden by merged md
         // ie. set ['saveSLOInfo'] to true, but do not set the ['saveSLOInfo'] at all
         // when false as it WILL overwrite the true !!!
@@ -113,7 +113,7 @@ class Corto_Module_Metadata {
             unset($rawmeta['md:EntityDescriptor']);
         }
 
-        foreach ((array) $rawmeta['md:EntitiesDescriptor'] as $entitiesDescriptor) {
+        foreach ((array) nvl($rawmeta, 'md:EntitiesDescriptor') as $entitiesDescriptor) {
             $entitiescommon = array();
             if (isset($entitiesDescriptor['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'])) {
                 foreach ((array) $entitiesDescriptor['md:Extensions']['mdattr:EntityAttributes']['saml:Attribute'] as $attribute) {
@@ -196,8 +196,12 @@ class Corto_Module_Metadata {
                         }
 
                         foreach ((array) nvl3($idporsp, 'md:Extensions', 'mdattr:EntityAttributes', 'saml:Attribute') as $attribute) {
+                            print_r($attribute);
                             foreach ((array) $attribute['saml:AttributeValue'] as $attributeValue) {
-                                $cortoEntityDescriptor[$descriptor][$attribute['_Name']][] = $attributeValue;
+                                foreach ($attributeValue as $value) {
+                                    print_r($value);
+                                    $cortoEntityDescriptor[$descriptor][$attribute['_Name']][] = $value;
+                                }
                             }
                         }
 
@@ -215,14 +219,6 @@ class Corto_Module_Metadata {
                         }
                         unset($cortoEntityDescriptor[$descriptor]['corto:privatekey']);
 
-                        if ($attributes = nvl($cortoEntityDescriptor[$descriptor], 'corto:IDPList')) {
-                            $idplist = array();
-                            foreach ($attributes as $values) {
-                                $idplist[] = $values['__v'];
-                            }
-                            $cortoEntityDescriptor[$descriptor]['corto:IDPList'] = $idplist;
-                        }
-
                         #$cortoEntityDescriptor[$descriptor] = self::merge(nvl($common, $descriptor), nvl($cortoEntityDescriptor, $descriptor));
                         #unset($common[$descriptor]);
                     }
@@ -233,7 +229,8 @@ class Corto_Module_Metadata {
         return $meta;
     }
 
-    protected static function prepareLookuptables($metadata) {
+    protected static function prepareLookuptables($metadata)
+    {
         $url2meta = array();
 
         foreach ($metadata as $id => $entity) {
@@ -269,7 +266,8 @@ class Corto_Module_Metadata {
         return $url2meta;
     }
 
-    private static function merge($a, $b) {
+    private static function merge($a, $b)
+    {
         if (is_null($a)) $a = array();
         foreach ((array) $b as $k => $v) {
             if (is_array($v)) {
@@ -284,6 +282,4 @@ class Corto_Module_Metadata {
         }
         return $a;
     }
-
-
 }
