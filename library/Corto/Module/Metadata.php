@@ -196,10 +196,10 @@ class Corto_Module_Metadata {
                         }
 
                         foreach ((array) nvl3($idporsp, 'md:Extensions', 'mdattr:EntityAttributes', 'saml:Attribute') as $attribute) {
-                            print_r($attribute);
+                            #print_r($attribute);
                             foreach ((array) $attribute['saml:AttributeValue'] as $attributeValue) {
                                 foreach ($attributeValue as $value) {
-                                    print_r($value);
+                                    #print_r($value);
                                     $cortoEntityDescriptor[$descriptor][$attribute['_Name']][] = $value;
                                 }
                             }

@@ -44,7 +44,7 @@ return array(
                                          array(
                                              '_Name' => 'corto:responseOutputFilter',
                                              'saml:AttributeValue' => array(
-                                                 'GoogleFilter::google',
+                                                 array('__v' => 'GoogleFilter::google'),
                                              ),
                                          ),
                                      )
@@ -97,7 +97,7 @@ return array(
                                           array(
                                               '_Name' => 'corto:responseOutputFilter',
                                               'saml:AttributeValue' => array(
-                                                  'LiveAtEduFilter::liveatedu',
+                                                  array('__v' => 'LiveAtEduFilter::liveatedu'),
                                               ),
                                           ),
                                       )

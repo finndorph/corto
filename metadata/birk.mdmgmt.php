@@ -154,16 +154,17 @@ function preparemetadataforbirk($metadatafile, $really = false)
     $instance = $dollar[1];
 
     $metadatasources = array(
-        'public:php:' . dirname(__FILE__) . '/wayf.prod.md.xml',
+        'public:xml:' . dirname(__FILE__) . '/wayf.prod.md.xml',
         'private:php:' . dirname(__FILE__) . '/birk.meta.php',
         'remote:xml:https://betawayf.wayf.dk/saml2/idp/metadata.php',
     );
 
-    $metadatafile = dirname(__FILE__) . $instance . '.optimized.metadata.php';
     $meta->prepareMetadata($metadatasources, '', $instance);
 
+    $metadatafile = dirname(__FILE__) . '/' . $instance . '.optimized.metadata.php';
+
     if (1) {
-        $md = eval(file_get_contents($metadatafile));
+        $md =  include $metadatafile;
         $lookuptablextra = array();
         foreach ($md as $id => $entity) {
             #unset($entity['original']);
@@ -226,8 +227,8 @@ function preparemetadataforbirk($metadatafile, $really = false)
             }
         }
 
-        print "#: " . count($entities);
-        $export = array('federations' => array('testing' => $entities), 'lookuptable' => array('testing' => array_merge($md['lookuptable']['testing'], $lookuptablextra)));
+        print "#: " . count($entities['md']);
+        $export = array('md' => $entities['md'], 'lookuptable' => array_merge($md['lookuptable'], $lookuptablextra));
         if ($really) {
             file_put_contents($metadatafile . '.tmp', "return " . var_export($export, true) . ";");
             @rename($metadatafile . '.tmp', $metadatafile);
