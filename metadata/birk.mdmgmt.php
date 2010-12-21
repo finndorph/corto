@@ -149,27 +149,23 @@ function preparemetadataforbirk($metadatafile, $really = false)
 
     $testqaprod = 'prod';
 
+    preg_match("/^([^\.]+)/", basename(__FILE__), $dollar);
+
+    $instance = $dollar[1];
 
     $metadatasources = array(
-        'federations' => array(
-            'testing' => array(
-                'private' => array(
-                    $commonmd,
-                ),
-                'public' => array(
-                    'php:' . dirname(__FILE__) . '/../metadata/birk.meta.php',
-                    'https://betawayf.wayf.dk/saml2/idp/metadata.php',
-                    dirname(__FILE__) . '/wayf.prod.md.xml',
-                ),
-            ),
-        ),
+        'public:php:' . dirname(__FILE__) . '/wayf.prod.md.xml',
+        'private:php:' . dirname(__FILE__) . '/birk.meta.php',
+        'remote:xml:https://betawayf.wayf.dk/saml2/idp/metadata.php',
     );
 
-    $meta->prepareMetadata($metadatasources, $metadatafile);
+    $metadatafile = dirname(__FILE__) . $instance . '.optimized.metadata.php';
+    $meta->prepareMetadata($metadatasources, '', $instance);
+
     if (1) {
         $md = eval(file_get_contents($metadatafile));
         $lookuptablextra = array();
-        foreach ($md['federations']['testing'] as $id => $entity) {
+        foreach ($md as $id => $entity) {
             #unset($entity['original']);
             if (nvl3($entity, 'IDP', 'corto:IDPList', 0) != 'https://wayf.wayf.dk') {
                 $entities[$id] = $entity;
