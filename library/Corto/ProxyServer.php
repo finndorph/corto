@@ -679,16 +679,16 @@ class Corto_ProxyServer
         $hostedMetaData = $this->_entities['current'];
         
         $responseDestination = $response['__']['destinationid'];
-        $idpEntityMetadata = $this->_entities['remote'][$responseDestination];
+        $idpEntityMetadata = $this->getRemoteEntity($responseDestination);
 
         $requestIssuer = $request['saml:Issuer']['__v'];
         $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
 
         if (isset($idpEntityMetadata['filter'])) {
-            $this->callAttributeFilter($idpEntityMetadata, $idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
+            $this->callAttributeFilter($idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
         if (isset($hostedMetaData['outfilter'])) {
-            $this->callAttributeFilter($hostedMetaData, $hostedMetaData['outfilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
+            $this->callAttributeFilter($hostedMetaData['outfilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
         }
     }
 
