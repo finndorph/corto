@@ -6,6 +6,10 @@ class Corto_Module_Services_Exception extends Corto_ProxyServer_Exception
 {
 }
 
+class Corto_Module_Services_SessionLostException extends Corto_ProxyServer_Exception
+{
+}
+
 class Corto_Module_Services extends Corto_Module_Abstract
 {
     const DEFAULT_REQUEST_BINDING  = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
@@ -128,7 +132,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         // Retrieve the request from the session.
         $id      = $_POST['ID'];
         if (!isset($_SESSION[$id]['SAMLRequest'])) {
-            throw new Corto_Module_Services_Exception('Session lost after WAYF?!?!?!');
+            throw new Corto_Module_Services_SessionLostException('Session lost after WAYF?!?!?!');
         }
         $request = $_SESSION[$id]['SAMLRequest'];
         
@@ -370,7 +374,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         $entityDescriptor['md:EntityDescriptor']['md:IDPSSODescriptor']['md:NameIDFormat'] = array(
-            '__v' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
+            '__v' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
         );
         $entityDescriptor['md:EntityDescriptor']['md:IDPSSODescriptor']['md:SingleSignOnService'] = array(
             '_Binding'  => self::DEFAULT_REQUEST_BINDING,

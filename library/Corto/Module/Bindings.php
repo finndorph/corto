@@ -21,6 +21,18 @@ class Corto_Module_Bindings_VerificationException extends Corto_Module_Bindings_
 {
 }
 
+class Corto_Module_Bindings_UnknownIssuerException extends Corto_Module_Bindings_VerificationException
+{
+}
+
+class Corto_Module_Bindings_TimingException extends Corto_Module_Bindings_VerificationException
+{
+}
+
+class Corto_Module_Bindings_UnableToReceiveMessageException extends Corto_Module_Bindings_Exception
+{
+}
+
 /**
  * The bindings module for Corto, which implements support for various data
  * bindings.
@@ -119,7 +131,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             return $message;
         }
 
-        throw new Corto_Module_Bindings_Exception('Unable to receive message: ' . $key);
+        throw new Corto_Module_Bindings_UnableToReceiveMessageException('Unable to receive message: ' . $key);
     }
 
     protected function _receiveMessageFromInternalBinding($key)
@@ -318,7 +330,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $messageIssuer = $message['saml:Issuer']['__v'];
         $remoteEntity = $this->_server->getRemoteEntity($messageIssuer);
         if ($remoteEntity===null) {
-            throw new Corto_Module_Bindings_VerificationException("Issuer '{$messageIssuer}' is not a known remote entity? (please add SP/IdP to Remote Entities)");
+            throw new Corto_Module_Bindings_UnknownIssuerException("Issuer '{$messageIssuer}' is not a known remote entity? (please add SP/IdP to Remote Entities)");
         }
         return $remoteEntity;
     }
@@ -589,7 +601,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         if (!empty($issues)) {
             $message = 'Problems detected with timings! Please check if your server has the correct time set.';
             $message .= ' Issues: '.implode(PHP_EOL, $issues);
-            throw new Corto_Module_Bindings_Exception($message);
+            throw new Corto_Module_Bindings_TimingException($message);
         }
         return true;
     }
