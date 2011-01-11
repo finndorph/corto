@@ -18,7 +18,7 @@ class DemoFilterClass {
         $server = $params['cortodata']['server'];
         $scopedCandidateIDPs = $params['cortodata']['scopedCandidateIDPs'];
         $relevantScopedIDPs = $params['cortodata']['relevantScopedIDPs'];
-        
+
         if ($idp = array_shift($scopedCandidateIDPs)) {
             $server->sendAuthenticationRequest($request, $idp, $relevantScopedIDPs);
         }

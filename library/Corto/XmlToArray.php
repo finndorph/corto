@@ -116,7 +116,7 @@ class Corto_XmlToArray {
         'ds:DigestValue',
         'ds:DSAKeyValue',
         'ds:KeyInfo',
-        #        'ds:KeyName',
+        'ds:KeyName',
         #        'ds:KeyValue',
         #        'ds:MgmtData',
         #        'ds:PGPData',

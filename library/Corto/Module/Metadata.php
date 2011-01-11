@@ -204,11 +204,16 @@ class Corto_Module_Metadata {
                                 }
                             }
                         }
-
                         foreach ((array) nvl($idporsp, 'md:KeyDescriptor') as $keyDescriptor) {
                             $use = nvl($keyDescriptor, '_use', 'signing');
-                            $cortoEntityDescriptor[$descriptor][$use]['X509Certificate'] =
-                                    $keyDescriptor['ds:KeyInfo']['ds:X509Data']['ds:X509Certificate']['__v'];
+                            if (isset($keyDescriptor['ds:KeyInfo']['ds:X509Data'])) {
+                                $cortoEntityDescriptor[$descriptor][$use]['X509Certificate'] =
+                                        $keyDescriptor['ds:KeyInfo']['ds:X509Data']['ds:X509Certificate']['__v'];
+                            } elseif (isset($keyDescriptor['ds:KeyInfo']['ds:KeyName'])) {
+                                $cortoEntityDescriptor[$descriptor][$use]['KeyName'] =
+                                        $keyDescriptor['ds:KeyInfo']['ds:KeyName']['__v'];
+
+                            }
                             /*                               $cortoEntityDescriptor[$descriptor][$keyDescriptor['_use']]['KeyName'] =
                             $keyDescriptor['ds:KeyInfo']['ds:X509Data']['ds:KeyName']['__v'];
                             */
@@ -219,7 +224,7 @@ class Corto_Module_Metadata {
                         }
                         unset($cortoEntityDescriptor[$descriptor]['corto:privatekey']);
 
-                        #$cortoEntityDescriptor[$descriptor] = self::merge(nvl($common, $descriptor), nvl($cortoEntityDescriptor, $descriptor));
+                        $cortoEntityDescriptor[$descriptor] = self::merge(nvl($entitiescommon, $descriptor), nvl($cortoEntityDescriptor, $descriptor));
                         #unset($common[$descriptor]);
                     }
                 }

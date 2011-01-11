@@ -28,7 +28,7 @@ try {
 /*
  * If called without path - use index.php
  */
-    $metadatafile = '../metadata/birk_optimized_metadata.php';
+    $metadatafile = '../metadata/';
 
     if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] == '/moc.elgoog-ACS' || $_SERVER['PATH_INFO'] == '/ude@evil-ACS') {
         $server->setMetadata($metadatafile);
@@ -48,7 +48,10 @@ try {
 /*
  * Initializing metadata for demo purposes
  */
-    $server->setMetadata($metadatafile);
+    preg_match("/^([^\.]+)/", basename(__FILE__), $dollar);
+
+    $instance = $dollar[1];
+    $server->setMetadata($metadatafile, $instance, true);
 
     $server->setTemplatePath(dirname(__FILE__) . '/../templates/');
 

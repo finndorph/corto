@@ -23,9 +23,9 @@ try {
  */
     preg_match("/^([^\.]+)/", basename(__FILE__), $dollar);
 
-    $federation = $dollar[1];
+    $instance = $dollar[1];
 
-    $server->setMetadata('../metadata/', $federation, true);
+    $server->setMetadata('../metadata/', $instance, true);
 
     $server->setTemplatePath(dirname(__FILE__) . '/../templates/');
 

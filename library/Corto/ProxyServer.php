@@ -325,11 +325,11 @@ class Corto_ProxyServer {
     {
         $originalId = $request['_ID'];
 
-        $proxySP = $this->_server->getCurrentMD('IDP', 'corto:ProxySP', 0, false);
+        $proxySP = $this->_server->getCurrentMD('IDP', 'corto:proxySP', 0, false);
 
         if (!$proxySP) {
             $issuer = $request['saml:Issuer']['__v'];
-            $proxySP = $this->_server->getRemoteMD($issuer, 'SP', 'corto:ProxySP', 0, false);
+            $proxySP = $this->_server->getRemoteMD($issuer, 'SP', 'corto:proxySP', 0, false);
         }
 
         if ($proxySP) {

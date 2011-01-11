@@ -347,7 +347,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
             $encryptedAssertion = $response['saml:EncryptedAssertion'];
 
             $response['saml:Assertion'] = $this->_decryptElement(
-                $this->_server->getCurrentMD('IDP', 'encryption', 'X509Privatekey'),
+                $this->_server->getCurrentMD('IDP', 'encryption', 'KeyName'),
                 $encryptedAssertion
             );
         }
@@ -726,7 +726,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
              */
             $queryString .= '&SigAlg=' . urlencode('http://www.w3.org/2000/09/xmldsig#rsa-sha1');
 
-            $privatekey = $this->_server->getCurrentMD('SP', 'signing', 'X509Privatekey');
+            $privatekey = $this->_server->getCurrentMD('SP', 'signing', 'KeyName');
 
             $key = openssl_pkey_get_private(self::RSAPKeyBegin . chunk_split($privatekey, 64) . self::RSAPKeyEnd);
 
@@ -759,11 +759,11 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         if ($name == 'samlp:AuthnRequest'
                 && ($this->_server->getRemoteMD($remoteEntity, 'IDP', 'WantAuthnRequestsSigned', null, false)
                         || $this->_server->getCurrentMD('SP', 'AuthnRequestsSigned', null, false))) {
-            $privatekey = $this->_server->getCurrentMD('SP', 'signing', 'X509Privatekey');
+            $privatekey = $this->_server->getCurrentMD('SP', 'signing', 'KeyName');
             $message = $this->_sign($privatekey, $message);
         } elseif ($name == 'samlp:Response') {
             if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantAssertionsSigned', null, false)) {
-                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
+                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'KeyName');
                 $certificate = $this->_server->getCurrentMD('IDP', 'signing', 'X509Certificate');
                 $message['saml:Assertion']['__t'] = 'saml:Assertion';
                 $message['saml:Assertion']['_xmlns:saml'] = "urn:oasis:names:tc:SAML:2.0:assertion";
@@ -773,7 +773,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 ksort($message['saml:Assertion']);
             }
             if ($this->_server->getRemoteMD($remoteEntity, 'SP', 'WantResponsesSigned', null, false)) {
-                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
+                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'KeyName');
                 $certificate = $this->_server->getCurrentMD('IDP', 'signing', 'X509Certificate');
                 $message = $this->_sign($privatekey, $certificate, $message);
             }
@@ -788,7 +788,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
                 //echo '<pre>'.htmlentities(Corto_XmlToArray::formatXml($encodedMessage)).'</pre>';
                 //throw new Exception('Message XML doesnt validate against XSD at Oasis-open.org?!');
             } else if ($name == 'SAMLResponse' && isset($remoteEntity['WantsResponsesSigned']) && $remoteEntity['WantsResponsesSigned']) {
-                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'X509Privatekey');
+                $privatekey = $this->_server->getCurrentMD('IDP', 'signing', 'KeyName');
                 $certificate = $this->_server->getCurrentMD('IDP', 'signing', 'X509Certificate');
                 $message = $this->_sign($privatekey, $certificate, $message);
             }
@@ -950,6 +950,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
         $signature['ds:SignedInfo']['ds:Reference']['_URI'] = "#" . $element['_ID'];
 
         $canonicalXml2 = DOMDocument::loadXML(Corto_XmlToArray::array2xml($signature['ds:SignedInfo']))->firstChild->C14N(true, false);
+
+        $privatekey = file_get_contents(dirname(__FILE__) . '/../../../privatekeys/' . $privatekey); 
 
         $key = openssl_pkey_get_private(self::RSAPKeyBegin . chunk_split($privatekey, 64) . self::RSAPKeyEnd);
 
