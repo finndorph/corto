@@ -21,12 +21,20 @@ function preparemetadataforbirk($metadatafile, $really = false)
             'wayf' => 'https://testidp.wayf.dk',
         ),
         'qa' => array(
-            'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QAaccepted&external=corto-qa',
+            'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=QA&external=corto-qa',
             'wayf' => 'https://betawayf.wayf.dk',
         ),
         'prod' => array(
             'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-idp&state=prodaccepted&external=corto-prod',
             'wayf' => 'https://wayf.wayf.dk',
+        ),
+        'sp' => array(
+            'md' => 'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=QAaccepted&mimetype=application/xml&external=corto-sp',
+            'wayf' => 'https://betawayf.wayf.dk',
+        ),
+        'proxy-sp' => array(
+            'md' => 'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=birk&mimetype=application/xml',
+            'wayf' => 'https://betawayf.wayf.dk',
         ),
     );
 
@@ -39,7 +47,8 @@ function preparemetadataforbirk($metadatafile, $really = false)
 
     $metadatasources = array(
         'public:xml:' . $janusconfig[$testqaprod]['md'],
-        'private:php:' . dirname(__FILE__) . '/birk.meta.php',
+        'private:xml:' . $janusconfig['sp']['md'],
+        'private:xml:' . $janusconfig['proxy-sp']['md'],
         'remote:xml:https://betawayf.wayf.dk/saml2/idp/metadata.php',
     );
 

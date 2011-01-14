@@ -23,23 +23,28 @@ class Corto_Module_Metadata {
         $md = array('public' => array(), 'private' => array(), 'remote' => array());
         foreach ($metadatasources as $source) {
             list($type, $tmpmd) = self::retrieveMetadata($source);
-            $md[$type] = self::merge($md[$type], $tmpmd);
+            //$md[$type] = self::merge($md[$type], $tmpmd);
+            $md[$type][] = $tmpmd;
         }
 
         $mdprefix = $metadatapath . $cortoinstance . '.';
         $publicmdfile = $mdprefix . 'public.metadata.php';
         $optimizedmdfile = $mdprefix . 'optimized.metadata.php';
 
-        #if (!($publicmdfile && $optimizedmdfile)) die("Can't export to $mdprefix" . "$cortoinstance...\n");
+        // if (!($publicmdfile && $optimizedmdfile)) die("Can't export to $mdprefix" . "$cortoinstance...\n");
+        
+		foreach ($md['public'] as $key => $tmpmd) {
+			if ($entitymd = nvl($tmpmd, 'md:EntityDescriptor')) {
+            	$md['public'][$key] = array('md:EntitiesDescriptor' => $tmpmd);
+        	}
+		}
 
-        if ($entitymd = nvl($md['public'], 'md:EntityDescriptor')) {
-            $md['public'] = array('md:EntitiesDescriptor' => $md['public']);
-        }
-
-        foreach ((array) $md['public']['md:EntitiesDescriptor'] as $entitiesDescriptor) {
-            foreach ((array) $entitiesDescriptor['md:EntityDescriptor'] as $entityDescriptor) {
-                $public[$entityDescriptor['_entityID']] = $entityDescriptor;
-            }
+		foreach ($md['public'] as $tmpmd) {
+        	foreach ((array) $tmpmd['md:EntitiesDescriptor'] as $entitiesDescriptor) {
+            	foreach ((array) $entitiesDescriptor['md:EntityDescriptor'] as $entityDescriptor) {
+                	$public[$entityDescriptor['_entityID']] = $entityDescriptor;
+            	}
+        	}
         }
 
         unset($public['_COMMON_']);
@@ -49,14 +54,23 @@ class Corto_Module_Metadata {
 
         print "Exporting $publicmdfile\n";
 
-        $optimized = self::optimizeMetaData('public', $md);
-
-        $optimized = self::merge($optimized, self::optimizeMetaData('private', $md, $optimized));
-
+		$optimized = null;
+		
+		foreach ($md['public'] as $tmpmd) {
+			// Ommit the $optimized param. Only used with _COMMON_ metadata
+        		$optimized = self::merge($optimized, self::optimizeMetaData('public', array('public' => $tmpmd)));
+		}
+		
+		foreach ($md['private'] as $tmpmd) {
+			$optimized = self::merge($optimized, self::optimizeMetaData('private', array('private' => $tmpmd)));
+		}
+		
         $url2service = self::prepareLookuptables($optimized);
 
-        $optimized = self::merge($optimized, self::optimizeMetaData('remote', $md, $optimized));
-
+		foreach ($md['remote'] AS $tmpmd) {
+        	$optimized = self::merge($optimized, self::optimizeMetaData('remote', array('remote' => $tmpmd)));
+		}
+		
         $export = array('md' => $optimized, 'lookuptable' => $url2service);
         file_put_contents($optimizedmdfile . '.tmp', "<?php\nreturn " . var_export($export, true) . ";");
         @rename($optimizedmdfile . '.tmp', $optimizedmdfile);
