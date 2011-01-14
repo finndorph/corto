@@ -26,7 +26,7 @@ class LiveAtEduFilter {
 
         $assertion['saml:Subject']['saml:NameID'] = Array(
             '_Format' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-            '_SPNameQualifier' => "outlook.com",
+            '_SPNameQualifier' => "live.wayf.dk",
             '__v' => $mail,
         );
 
