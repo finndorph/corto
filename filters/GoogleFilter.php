@@ -35,7 +35,6 @@ class GoogleFilter {
 
         $assertion['saml:Conditions']['saml:AudienceRestriction']['saml:Audience']['__v'] = $acs;
         $assertion['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_Recipient'] = $acs;
-
         return $params['cortodata'];
     }
 
