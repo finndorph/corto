@@ -953,7 +953,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract {
 
         $privatekey = file_get_contents(dirname(__FILE__) . '/../../../privatekeys/' . $privatekey); 
 
-        $key = openssl_pkey_get_private(self::RSAPKeyBegin . chunk_split(trim($privatekey), 64) . self::RSAPKeyEnd);
+        $key = openssl_pkey_get_private($privatekey);
 
         openssl_sign($canonicalXml2, $signatureValue, $key);
 
