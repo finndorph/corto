@@ -33,7 +33,7 @@ function preparemetadataforbirk($metadatafile)
             'wayf' => 'https://betawayf.wayf.dk',
         ),
         'proxy-sp' => array(
-            'md' => 'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=birk&mimetype=application/xml',
+            'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=birk&mimetype=application/xml',
             'wayf' => 'https://betawayf.wayf.dk',
         ),
     );
