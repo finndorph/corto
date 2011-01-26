@@ -29,11 +29,11 @@ function preparemetadataforbirk($metadatafile)
             'wayf' => 'https://wayf.wayf.dk',
         ),
         'sp' => array(
-            'md' => 'http://janus-dev.test.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=QAaccepted&mimetype=application/xml&external=corto-sp',
+            'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=birk&external=corto-sp',
             'wayf' => 'https://betawayf.wayf.dk',
         ),
         'proxy-sp' => array(
-            'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=birk&mimetype=application/xml',
+            'md' => 'https://janus.wayf.dk/module.php/janus/exportentities.php?type[]=saml20-sp&state=QA&external=corto-proxy-sp',
             'wayf' => 'https://betawayf.wayf.dk',
         ),
     );
