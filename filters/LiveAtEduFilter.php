@@ -26,7 +26,7 @@ class LiveAtEduFilter {
             }
         }
 
-        $newattributes['urn:oid:1.3.http://wayf.dk/live@edu/saml.live.wayf.dk6.1.4.1.5923.1.1.1.6'] = array('na@' . $domain);
+        $newattributes['urn:oid:1.3.6.1.4.1.5923.1.1.1.6'] = array('na@' . $domain);
         unset($assertion['saml:AttributeStatement']);
         $assertion['saml:AttributeStatement'][0]['saml:Attribute'] = array2attributes($newattributes);
         unset($assertion['saml:AuthnStatement']['saml:AuthnContext']['saml:AuthenticatingAuthority']);
