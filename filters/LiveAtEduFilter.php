@@ -15,22 +15,28 @@ class LiveAtEduFilter {
         $assertion = &$params['cortodata']['response']['saml:Assertion'];
         $samlattribute = $assertion['saml:AttributeStatement'][0]['saml:Attribute'];
         $attributes = attributes2array($samlattribute);
+
+        // Get the federated id (ePPN))
         $dollar = array();
         preg_match("/^(.*)@/", $attributes['eduPersonPrincipalName'][0], $dollar);
-
         $fid = $dollar[1];
-        foreach ($attributes['eduPersonEntitlement'] as $epn) {
-            if (preg_match("/^http:\\/\\/wayf\\.dk\\/live@edu\\/(.*)$/", $epn, $dollar)) {
-                $domain = $dollar[1];
+
+        // Get the WLID (eduPersonEntitlement)
+        $dollar = array();
+        foreach ($attributes['eduPersonEntitlement'] as $epe) {
+            if (preg_match("/^http:\\/\\/wayf\\.dk\\/live@edu\\/(.*)$/", $epe, $dollar)) {
+                $wlid = $dollar[1];
                 break;
             }
         }
 
-        $newattributes['urn:oid:1.3.6.1.4.1.5923.1.1.1.6'] = array('na@' . $domain);
+        // Send the WLID
+        $newattributes['urn:oid:1.3.6.1.4.1.5923.1.1.1.6'] = array($wlid);
         unset($assertion['saml:AttributeStatement']);
         $assertion['saml:AttributeStatement'][0]['saml:Attribute'] = array2attributes($newattributes);
         unset($assertion['saml:AuthnStatement']['saml:AuthnContext']['saml:AuthenticatingAuthority']);
 
+        // Set subject to ePPN
         $assertion['saml:Subject']['saml:NameID'] = Array(
             '_Format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
             '__v' => $fid,
