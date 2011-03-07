@@ -307,13 +307,14 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
      * @throws Corto_Module_Bindings_VerificationException if any of the
      * verifications fail
      */
-    protected function _verifyRequest(array $request)
+    protected function _verifyRequest(array &$request)
     {
         $remoteEntity = $this->_verifyKnownIssuer($request);
         
         if ((isset($remoteEntity['AuthnRequestsSigned']) && $remoteEntity['AuthnRequestsSigned']) ||
             ($this->_server->getCurrentEntitySetting('WantsAuthnRequestsSigned', false))) {
             $this->_verifySignature($request, self::KEY_REQUEST);
+            $request['__']['WasSigned'] = true;
         }
         
         $this->_verifyMessageDestinedForUs($request);
@@ -455,12 +456,13 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         return Corto_XmlToArray::xml2array($decryptedData);
     }
 
-    protected function _verifyResponse(array $response)
+    protected function _verifyResponse(array &$response)
     {
         $this->_verifyKnownIssuer($response);
 
         if ($this->_server->getCurrentEntitySetting('WantsAssertionsSigned', false)) {
             $this->_verifySignature($response, self::KEY_RESPONSE);
+            $request['__']['WasSigned'] = true;
         }
         $this->_verifyMessageDestinedForUs($response);
         $this->_verifyTimings($response);
