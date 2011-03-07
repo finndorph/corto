@@ -859,14 +859,14 @@ class Corto_ProxyServer
         return sha1(uniqid(mt_rand(), true));
     }
 
-    protected function startSession()
+    public function startSession()
     {
         session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', true));
         session_name($this->_entities['current']['EntityCode']);
         session_start();
     }
 
-    protected function restartSession($newId, $newName)
+    public function restartSession($newId, $newName)
     {
         session_write_close();
 

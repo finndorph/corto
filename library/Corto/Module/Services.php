@@ -298,11 +298,11 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $nextProcessingEntity = array_shift($remainingProcessingEntities);
 
             // Change the destiny of the received response
-            $receivedResponse['_Destination']           = $nextProcessingEntity['Location'];
-            $receivedResponse['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
-            $receivedResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $response['_Destination']           = $nextProcessingEntity['Location'];
+            $response['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
+            $response['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
 
-            return $this->_server->getBindingsModule()->send($receivedResponse, $nextProcessingEntity);
+            return $this->_server->getBindingsModule()->send($response, $nextProcessingEntity);
         }
         else { // Done processing! Send off to SP
             $response['_Destination']          = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
@@ -317,7 +317,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
             // Cache the response
             if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-                $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
+                $issuerEntityId = $response['saml:Issuer']['__v'];
                 $_SESSION['CachedResponses'][$issuerEntityId] = $response;
             }
 
@@ -492,7 +492,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
                 $element => $message,
             ),
         );
-        $this->_server->getBindingsModule()->_soapResponse($artifactResponse);
+        $this->_server->getBindingsModule()->soapResponse($artifactResponse);
     }
 
     protected function _showWayf($request, $candidateIdPs)

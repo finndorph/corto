@@ -634,7 +634,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         return $soapResponse['SOAP-ENV:Body'];
     }
 
-    protected function _soapResponse(array $body)
+    public function soapResponse(array $body)
     {
         $soapResponse = array(
             '__t'               => 'SOAP-ENV:Envelope',
