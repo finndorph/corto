@@ -606,7 +606,10 @@ class Corto_ProxyServer
     protected function _getRequestAssertionConsumer(array $request)
     {
         $acs = array();
-        if (isset($request['_AssertionConsumerServiceURL'])) {
+        if (isset($request['_AssertionConsumerServiceURL']) &&
+            isset($request['__']['WasSigned']) &&
+            $request['__']['WasSigned']===true) {
+
             $acs['Location'] = $request['_AssertionConsumerServiceURL'];
             $acs['Binding']  = $request['_ProtocolBinding'];
         } else {
