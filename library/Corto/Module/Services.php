@@ -21,7 +21,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
     public function singleSignOnService()
     {
         $request = $this->_server->getBindingsModule()->receiveRequest();
-        $scopedIDPs = array();
         $request['__']['Transparent'] = $this->_server->getCurrentEntitySetting('TransparentProxy', false);
 
         // If ForceAuthn attribute is on, then remove cached responses and cached IDPs
@@ -30,21 +29,9 @@ class Corto_Module_Services extends Corto_Module_Abstract
             unset($_SESSION['CachedResponses']);
         }
 
-        // Add scoped IdPs (allowed IDPs for reply) from request to allowed IdPs for responding
-        if (isset($request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'])) {
-            foreach ($request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'] as $IDPEntry) {
-                $scopedIDPs[] = $IDPEntry['_ProviderID'];
-            }
-            $this->_server->getSessionLog()->debug("SSO: Request contains scoped idps: " . print_r($scopedIDPs, 1));
-        }
-
-        // If we configured an IDPList it overrides the one in the request
-        // IDPLIst might contain only one idp!
-        $presetIdPs = $this->_server->getCurrentEntitySetting('IDPList');
-        if ($presetIdPs) {
-            $scopedIDPs = $presetIdPs;
-            $this->_server->getSessionLog()->debug("SSO: Scoped idps found in metadata: " . print_r($scopedIDPs, 1));
-        }
+        // The request may specify it ONLY wants a response from specific IdPs
+        // or we could have it configured that the SP may only be serviced by specific IdPs
+        $scopedIDPs = $this->_getScopedIdPs($request);
 
         // If one of the scoped IDP has a cache entry, return that
         $cachedIDPs = array();
@@ -52,9 +39,15 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']); 
         }
 
-        if ($commonIDPs = array_intersect($cachedIDPs, $scopedIDPs) || (sizeof($scopedIDPs) == 0 && $commonIDPs = $cachedIDPs)) {
+        // If we have IdPs scoping, then don't use cached responses from other IdPs
+        if (count($scopedIDPs) > 0) {
+            $cachedIDPs = array_intersect($cachedIDPs, $scopedIDPs);
+        }
+
+        // If we have cached responses from one or more IdPs, then we return the first cached response we find.
+        if (!empty($cachedIDPs)) {
             $this->_server->getSessionLog()->debug("SSO: Cached response found");
-            $cachedResponse = $_SESSION['CachedResponses'][$commonIDPs[0]];
+            $cachedResponse = $_SESSION['CachedResponses'][$cachedIDPs[0]];
             $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
             return $this->_server->sendResponseToRequestIssuer($request, $response);
         }
@@ -64,13 +57,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $this->_server->getSessionLog()->debug("SSO: Proxy count exceeded!");
             $response = $this->_server->createErrorResponse($request, 'ProxyCountExceeded');
             return $this->_server->sendResponseToRequestIssuer($request, $response);
-        }
-
-        // If we have an IdP configured then we send the authentication request to that Idp
-        $presetIdp = $this->_server->getCurrentEntitySetting('Idp');
-        if ($presetIdp) {
-            $this->_server->getSessionLog()->debug("SSO: Preset idp found: '$presetIdp'");
-            return $this->_server->sendAuthenticationRequest($request, $presetIdp);
         }
 
         // Get all registered Single Sign On Services
@@ -115,6 +101,33 @@ class Corto_Module_Services extends Corto_Module_Abstract
         // Show WAYF
         $this->_server->getSessionLog()->debug("SSO: Showing WAYF");
         return $this->_showWayf($request, $candidateIDPs);
+    }
+
+    protected function _getScopedIdPs($request = null)
+    {
+        $scopedIdPs = array();
+        // Add scoped IdPs (allowed IDPs for reply) from request to allowed IdPs for responding
+        if (isset($request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'])) {
+            foreach ($request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'] as $IDPEntry) {
+                $scopedIdPs[] = $IDPEntry['_ProviderID'];
+            }
+            $this->_server->getSessionLog()->debug("SSO: Request contains scoped idps: " . print_r($scopedIdPs, 1));
+        }
+
+        $presetIdPs = $this->_server->getCurrentEntitySetting('IDPList');
+        $presetIdP  = $this->_server->getCurrentEntitySetting('Idp');
+
+        // If we have ONE specific IdP pre-configured then we scope to ONLY that Idp
+        if ($presetIdP) {
+            $scopedIdPs = array($presetIdP);
+            $this->_server->getSessionLog()->debug("SSO: Scoped idp found in metadata: " . $scopedIdPs[0]);
+        }
+        // If we configured an IDPList it overrides the one in the request
+        else if ($presetIdPs) {
+            $scopedIdPs = $presetIdPs;
+            $this->_server->getSessionLog()->debug("SSO: Scoped idps found in metadata: " . print_r($scopedIdPs, 1));
+        }
+        return $scopedIdPs;
     }
 
     /**
