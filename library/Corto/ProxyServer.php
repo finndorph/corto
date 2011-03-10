@@ -319,7 +319,7 @@ class Corto_ProxyServer
             foreach ($remoteEntityIds as $remoteEntityId) {
                 if (md5($remoteEntityId) === $remoteIdPMd5) {
                     $hostedEntity['Idp'] = $remoteEntityId;
-                    $hostedEntity['TransparantProxy'] = true;
+                    $hostedEntity['TransparentProxy'] = true;
                     $this->getSessionLog()->debug("Detected pre-selection of $remoteEntityId as IdP, switching to transparant mode");
                     break;
                 }
