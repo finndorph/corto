@@ -335,11 +335,13 @@ class Corto_ProxyServer
 
 ////////  REQUEST HANDLING /////////
 
-    public function sendAuthenticationRequest(array $request, $idp, $scope = null)
+    public function sendAuthenticationRequest(array $request, $idpEntityId, $scope = null)
     {
+        $this->setCookie('selectedIdp', $idpEntityId);
+
         $originalId = $request['_ID'];
 
-        $newRequest = $this->createEnhancedRequest($request, $idp, $scope);
+        $newRequest = $this->createEnhancedRequest($request, $idpEntityId, $scope);
         $newId = $newRequest['_ID'];
 
         // Store the original Request
@@ -350,7 +352,7 @@ class Corto_ProxyServer
         $_SESSION[$newId]['SAMLRequest'] = $request;
         $_SESSION[$newId]['_InResponseTo'] = $originalId;
 
-        $this->getBindingsModule()->send($newRequest, $this->_entities['remote'][$idp]);
+        $this->getBindingsModule()->send($newRequest, $this->_entities['remote'][$idpEntityId]);
     }
 
     /**
@@ -681,8 +683,8 @@ class Corto_ProxyServer
     {
         $hostedMetaData = $this->_entities['current'];
         
-        $responseDestination = $response['__']['destinationid'];
-        $idpEntityMetadata = $this->getRemoteEntity($responseDestination);
+        $responseIssuer = $response['saml:Issuer']['__v'];
+        $idpEntityMetadata = $this->getRemoteEntity($responseIssuer);
 
         $requestIssuer = $request['saml:Issuer']['__v'];
         $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
@@ -815,6 +817,19 @@ class Corto_ProxyServer
     public function sendOutput($rawOutput)
     {
         return print $rawOutput; 
+    }
+
+    public function setCookie($name, $value, $expire = null, $path = null, $domain = null, $secure = null, $httpOnly = null)
+    {
+        return setcookie($name, $value, $expire, $path, $domain, $secure, $httpOnly);
+    }
+
+    public function getCookie($name, $defaultValue = null)
+    {
+        if (isset($_COOKIE[$name])) {
+            return $_COOKIE[$name];
+        }
+        return $defaultValue;
     }
 
 //////// UTILITIES /////////

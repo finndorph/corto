@@ -34,22 +34,21 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $scopedIDPs = $this->_getScopedIdPs($request);
 
         // If one of the scoped IDP has a cache entry, return that
-        $cachedIDPs = array();
         if (isset($_SESSION['CachedResponses'])) {
-            $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']); 
-        }
+            $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']);
 
-        // If we have IdPs scoping, then don't use cached responses from other IdPs
-        if (count($scopedIDPs) > 0) {
-            $cachedIDPs = array_intersect($cachedIDPs, $scopedIDPs);
-        }
+            // If we have IdPs scoping, then don't use cached responses from other IdPs
+            if (count($scopedIDPs) > 0) {
+                $cachedIDPs = array_intersect($cachedIDPs, $scopedIDPs);
+            }
 
-        // If we have cached responses from one or more IdPs, then we return the first cached response we find.
-        if (!empty($cachedIDPs)) {
-            $this->_server->getSessionLog()->debug("SSO: Cached response found");
-            $cachedResponse = $_SESSION['CachedResponses'][$cachedIDPs[0]];
-            $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
-            return $this->_server->sendResponseToRequestIssuer($request, $response);
+            // If we have cached responses from one or more IdPs, then we return the first cached response we find.
+            if (!empty($cachedIDPs)) {
+                $this->_server->getSessionLog()->debug("SSO: Cached response found");
+                $cachedResponse = $_SESSION['CachedResponses'][$cachedIDPs[0]];
+                $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
+                return $this->_server->sendResponseToRequestIssuer($request, $response);
+            }
         }
 
         // If the scoped proxycount = 0, respond with a ProxyCountExceeded error
@@ -60,7 +59,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // Get all registered Single Sign On Services
-        $candidateIDPs = array();        
+        $candidateIDPs = array();
         foreach ($this->_server->getRemoteEntities() as $remoteEntityId => $remoteEntity) {
             if (isset($remoteEntity['SingleSignOnService'])) {
                 $candidateIDPs[] = $remoteEntityId;
@@ -73,34 +72,44 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $candidateIDPs = sizeof($scopedIDPs) > 0 ? array_intersect($scopedIDPs, $candidateIDPs) : $candidateIDPs;
         $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
 
+        // No IdPs found! Send an error response back.
+        if (count($candidateIDPs) === 0) {
+            $this->_server->getSessionLog()->debug("SSO: No Supported Idps!");
+            if ($this->_server->getConfig('NoSupportedIDPError')!=='user') {
+                $response = $this->_server->createErrorResponse($request, 'NoSupportedIDP');
+                return $this->_server->sendResponseToRequestIssuer($request, $response);
+            }
+            else {
+                $output = $this->_server->renderTemplate(
+                    'noidps',
+                    array(
+                ));
+                return $this->_server->sendOutput($output);
+            }
+        }
         // Exactly 1 candidate found, send authentication request to the first one
-        if (count($candidateIDPs) === 1) {
+        else if (count($candidateIDPs) === 1) {
             $idp = $candidateIDPs[0];
             $this->_server->getSessionLog()->debug("SSO: Only 1 candidate IdP: $idp");
             return $this->_server->sendAuthenticationRequest($request, $idp);
         }
+        // Multiple IdPs found...
+        else {
+            // > 1 IdPs found, but isPassive attribute given, unable to show WAYF
+            if (isset($request['_IsPassive']) && $request['_IsPassive'] === 'true') {
+                $this->_server->getSessionLog()->debug("SSO: IsPassive with multiple IdPs!");
+                $response = $this->_server->createErrorResponse($request, 'NoPassive');
+                return $this->_server->sendResponseToRequestIssuer($request, $response);
+            }
 
-        // No IdPs found! Send an error response back.
-        if (count($candidateIDPs) === 0) {
-            $this->_server->getSessionLog()->debug("SSO: No Supported Idps!");
-            $response = $this->_server->createErrorResponse($request, 'NoSupportedIDP');
-            return $this->_server->sendResponseToRequestIssuer($request, $response);
+            // Store the request in the session
+            $id = $request['_ID'];
+            $_SESSION[$id]['SAMLRequest'] = $request;
+
+            // Show WAYF
+            $this->_server->getSessionLog()->debug("SSO: Showing WAYF");
+            return $this->_showWayf($request, $candidateIDPs);
         }
-
-        // > 1 IdPs found, but isPassive attribute given, unable to continue
-        if (isset($request['_IsPassive']) && $request['_IsPassive'] === 'true') {
-            $this->_server->getSessionLog()->debug("SSO: IsPassive with multiple IdPs!");
-            $response = $this->_server->createErrorResponse($request, 'NoPassive');
-            return $this->_server->sendResponseToRequestIssuer($request, $response);
-        }
-
-        // Store the request in the session
-        $id = $request['_ID'];
-        $_SESSION[$id]['SAMLRequest'] = $request;
-
-        // Show WAYF
-        $this->_server->getSessionLog()->debug("SSO: Showing WAYF");
-        return $this->_showWayf($request, $candidateIDPs);
     }
 
     protected function _getScopedIdPs($request = null)
@@ -519,6 +528,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $output = $this->_server->renderTemplate(
             'discover',
             array(
+                'preselectedIdp'    => $this->_server->getCookie('selectedIdp'),
                 'action'            => $action,
                 'ID'                => $request['_ID'],
                 'idpList'           => $candidateIdPs,
