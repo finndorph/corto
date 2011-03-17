@@ -148,13 +148,13 @@ class Corto_Module_Services extends Corto_Module_Abstract
     {
         $selectedIdp = $_REQUEST['idp'];
         if (!$selectedIdp) {
-            throw new Corto_Module_Services_Exception('No IdP selected after WAYF?!?');
+            throw new Corto_Module_Services_Exception('No IdP selected after WAYF');
         }
 
         // Retrieve the request from the session.
         $id      = $_POST['ID'];
         if (!isset($_SESSION[$id]['SAMLRequest'])) {
-            throw new Corto_Module_Services_SessionLostException('Session lost after WAYF?!?!?!');
+            throw new Corto_Module_Services_SessionLostException('Session lost after WAYF');
         }
         $request = $_SESSION[$id]['SAMLRequest'];
         
@@ -276,6 +276,9 @@ class Corto_Module_Services extends Corto_Module_Abstract
      */
     public function processConsentService()
     {
+        if (!isset($_SESSION['consent'])) {
+            throw new Corto_Module_Services_SessionLostException('Session lost after consent');
+        }
         $response = $_SESSION['consent'][$_POST['ID']]['response'];
 
         $attributes = Corto_XmlToArray::attributes2array(
