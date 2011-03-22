@@ -360,19 +360,18 @@ class Corto_Module_Services extends Corto_Module_Abstract
     public function idPMetadataService()
     {
         $entityDescriptor = array(
+            Corto_XmlToArray::TAG_NAME_KEY => 'md:EntityDescriptor',
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
-            'md:EntityDescriptor' => array(
-                '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
-                '_entityID' => $this->_server->getCurrentEntityUrl('idPMetadataService'),
-                'md:IDPSSODescriptor' => array(
-                    '_protocolSupportEnumeration' => "urn:oasis:names:tc:SAML:2.0:protocol",
-                ),
-            )
+            '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
+            '_entityID' => $this->_server->getCurrentEntityUrl('idPMetadataService'),
+            'md:IDPSSODescriptor' => array(
+                '_protocolSupportEnumeration' => "urn:oasis:names:tc:SAML:2.0:protocol",
+            ),
         );
 
         $certificates = $this->_server->getCurrentEntitySetting('certificates', array());
         if (isset($certificates['public'])) {
-            $entityDescriptor['md:EntityDescriptor']['md:IDPSSODescriptor']['md:KeyDescriptor'] = array(
+            $entityDescriptor['md:IDPSSODescriptor']['md:KeyDescriptor'] = array(
                 array(
                     '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
                     '_use' => 'signing',
@@ -398,15 +397,15 @@ class Corto_Module_Services extends Corto_Module_Abstract
             );
         }
 
-        $entityDescriptor['md:EntityDescriptor']['md:IDPSSODescriptor']['md:NameIDFormat'] = array(
+        $entityDescriptor['md:IDPSSODescriptor']['md:NameIDFormat'] = array(
             '__v' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
         );
-        $entityDescriptor['md:EntityDescriptor']['md:IDPSSODescriptor']['md:SingleSignOnService'] = array(
+        $entityDescriptor['md:IDPSSODescriptor']['md:SingleSignOnService'] = array(
             '_Binding'  => self::DEFAULT_REQUEST_BINDING,
             '_Location' => $this->_server->getCurrentEntityUrl('singleSignOnService'),
         );
 
-        $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntitiesDescriptor', true);
+        $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntityDescriptor', true);
 
         $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
         if ($this->_server->getConfig('debug', false)  && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
@@ -431,19 +430,18 @@ class Corto_Module_Services extends Corto_Module_Abstract
     public function sPMetadataService()
     {
         $entityDescriptor = array(
+            Corto_XmlToArray::TAG_NAME_KEY => 'md:EntityDescriptor',
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
-            'md:EntityDescriptor' => array(
-                '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
-                '_entityID' => $this->_server->getCurrentEntityUrl('sPMetadataService'),
-                'md:SPSSODescriptor' => array(
-                    '_protocolSupportEnumeration' => "urn:oasis:names:tc:SAML:2.0:protocol",
-                ),
-            )
+            '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
+            '_entityID' => $this->_server->getCurrentEntityUrl('sPMetadataService'),
+            'md:SPSSODescriptor' => array(
+                '_protocolSupportEnumeration' => "urn:oasis:names:tc:SAML:2.0:protocol",
+            ),
         );
 
         $certificates = $this->_server->getCurrentEntitySetting('certificates', array());
         if (isset($certificates['public'])) {
-            $entityDescriptor['md:EntityDescriptor']['md:SPSSODescriptor']['md:KeyDescriptor'] = array(
+            $entityDescriptor['md:SPSSODescriptor']['md:KeyDescriptor'] = array(
                 array(
                     '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
                     '_use' => 'signing',
@@ -469,16 +467,16 @@ class Corto_Module_Services extends Corto_Module_Abstract
             );
         }
 
-        $entityDescriptor['md:EntityDescriptor']['md:SPSSODescriptor']['md:NameIDFormat'] = array(
+        $entityDescriptor['md:SPSSODescriptor']['md:NameIDFormat'] = array(
             '__v' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
         );
-        $entityDescriptor['md:EntityDescriptor']['md:SPSSODescriptor']['md:AssertionConsumerService'] = array(
+        $entityDescriptor['md:SPSSODescriptor']['md:AssertionConsumerService'] = array(
             '_Binding'  => self::DEFAULT_RESPONSE_BINDING,
             '_Location' => $this->_server->getCurrentEntityUrl('assertionConsumerService'),
             '_index' => '1',
         );
 
-        $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntitiesDescriptor', true);
+        $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntityDescriptor', true);
 
         $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
         if ($this->_server->getConfig('debug', false) && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
