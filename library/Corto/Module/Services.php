@@ -157,7 +157,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             throw new Corto_Module_Services_SessionLostException('Session lost after WAYF');
         }
         $request = $_SESSION[$id]['SAMLRequest'];
-        
+
         $this->_server->sendAuthenticationRequest($request, $selectedIdp);
     }
 
@@ -524,19 +524,27 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $action = $this->_server->getCurrentEntityUrl('continueToIdP');
 
         $requestIssuer = $request['saml:Issuer']['__v'];
+
         $remoteEntity = $this->_server->getRemoteEntity($requestIssuer);
 
+        $idpList = $this->_transformIdpsForWAYF($candidateIdPs);
+
+        //var_dump($remoteEntity);die();
         $output = $this->_server->renderTemplate(
             'discover',
             array(
                 'preselectedIdp'    => $this->_server->getCookie('selectedIdp'),
                 'action'            => $action,
                 'ID'                => $request['_ID'],
-                'idpList'           => $candidateIdPs,
+                'idpList'           => $idpList,
                 'metaDataSP'        => $remoteEntity,
-                'remoteEntities'    => $this->_server->getRemoteEntities(),
             ));
         $this->_server->sendOutput($output);
+    }
+
+    protected function _transformIdpsForWayf($idps)
+    {
+        return $idps;
     }
 
     protected static function _getCertDataFromPem($pemKey)
