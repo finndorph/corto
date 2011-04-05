@@ -450,6 +450,7 @@ class Corto_ProxyServer
     public function createEnhancedResponse($request, $sourceResponse)
     {
         $response = $this->_createBaseResponse($request);
+        $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['OriginalIssuer'] = $sourceResponse['saml:Assertion']['saml:Issuer']['__v'];
         if (isset($request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) &&
             $request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) {
             $response['saml:Issuer']['__v'] = $sourceResponse['saml:Issuer']['__v'];
@@ -682,8 +683,7 @@ class Corto_ProxyServer
     public function filterOutputAssertionAttributes(&$response, $request)
     {
         $hostedMetaData = $this->_entities['current'];
-        
-        $responseIssuer = $response['saml:Issuer']['__v'];
+        $responseIssuer = $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['OriginalIssuer'];
         $idpEntityMetadata = $this->getRemoteEntity($responseIssuer);
 
         $requestIssuer = $request['saml:Issuer']['__v'];
