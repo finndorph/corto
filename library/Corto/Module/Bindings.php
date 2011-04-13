@@ -46,6 +46,18 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     const KEY_REQUEST  = 'SAMLRequest';
     const KEY_RESPONSE = 'SAMLResponse';
 
+    protected static $ASSERTION_SEQUENCE = array(
+        'saml:Issuer',
+        'ds:Signature',
+        'saml:Subject',
+        'saml:Conditions',
+        'saml:Advice',
+        'saml:Statement',
+        'saml:AuthnStatement',
+        'saml:AuhzDecisionStatement',
+        'saml:AttributeStatement',
+    );
+
     /**
      * Supported bindings in Corto. 
      * @var array
@@ -771,18 +783,21 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
                 $message['saml:Assertion']['__t'] = 'saml:Assertion';
                 $message['saml:Assertion']['_xmlns:saml'] = "urn:oasis:names:tc:SAML:2.0:assertion";
                 unset($message['saml:Assertion']['ds:Signature']);
-                ksort($message['saml:Assertion']);
+
+                uksort($message['saml:Assertion'], array(__CLASS__, '_usortAssertion'));
 
                 $message['saml:Assertion'] = $this->_sign(
                     $this->_getCurrentEntityPrivateKey(),
                     $message['saml:Assertion']
                 );
-                ksort($message['saml:Assertion']);
                 #$enc = docrypt(certs::$server_crt, $message['saml:Assertion'], 'saml:EncryptedAssertion');
 
             }
             else if ($name == 'SAMLResponse' && isset($remoteEntity['WantsResponsesSigned']) && $remoteEntity['WantsResponsesSigned']) {
                 $this->_server->getSessionLog()->debug("HTTP-Redirect: (Re-)Signing");
+
+                uksort($message['saml:Assertion'], array(__CLASS__, '_usortAssertion'));
+
                 $message = $this->_sign(
                     $this->_getCurrentEntityPrivateKey(),
                     $message
@@ -885,7 +900,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         openssl_sign($canonicalXml2, $signatureValue, $key);
 
         openssl_free_key($key);
+
         $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
+
         foreach ($element as $tag => $item) {
             if ($tag == 'ds:Signature') {
                 continue;
@@ -900,4 +917,71 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
         return $newElement;
     }
+
+
+
+    protected static function _usortAssertion($a, $b)
+    {
+        $result = self::_usortByPrefix(Corto_XmlToArray::PRIVATE_KEY_PREFIX, $a, $b);
+        if ($result !== false) {
+            return $result;
+        }
+
+        $result = self::_usortByPrefix(Corto_XmlToArray::TAG_NAME_KEY, $a, $b);
+        if ($result !== false) {
+            return $result;
+        }
+
+        $result = self::_usortByPrefix('_xmlns', $a, $b);
+        if ($result !== false) {
+            return $result;
+        }
+
+        $result = self::_usortByPrefix(Corto_XmlToArray::ATTRIBUTE_KEY_PREFIX, $a, $b);
+        if ($result !== false) {
+            return $result;
+        }
+
+        $result = self::_usortBySequence(self::$ASSERTION_SEQUENCE, $a, $b);
+        if ($result !== false) {
+            return $result;
+        }
+
+        // Finally, something else...? Should never get here
+        return strcmp($a, $b);
+    }
+
+    protected static function _usortByPrefix($prefix, $a, $b)
+    {
+        // private key first
+        $aHasPrefix = (strpos($a, $prefix) === 0);
+        $bHasPrefix = (strpos($b, $prefix) === 0);
+        if ($aHasPrefix && !$bHasPrefix) {
+            return -1;
+        }
+        else if ($bHasPrefix && !$aHasPrefix) {
+            return 1;
+        }
+        else if ($aHasPrefix && $bHasPrefix) {
+            return strcmp($a, $b);
+        }
+        return false;
+    }
+
+    protected static function _usortBySequence($sequence, $a, $b)
+    {
+        // regular tags fifth
+        $aInSequence = in_array($a, $sequence, false);
+        $bInSequence = in_array($b, $sequence, false);
+        if ($aInSequence && !$bInSequence) {
+            return -1;
+        }
+        else if ($bInSequence && !$aInSequence) {
+            return 1;
+        }
+        else if ($aInSequence && $bInSequence) {
+            return array_search($a, $sequence) > array_search($b, $sequence) ? 1 : -1;
+        }
+        return false;
+    }    
 }

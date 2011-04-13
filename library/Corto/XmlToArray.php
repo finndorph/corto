@@ -334,6 +334,7 @@ class Corto_XmlToArray
             foreach ((array)$attribute as $value) {
                 $newAttribute['saml:AttributeValue'][] = array (
                    '_xmlns:xsi'     => 'http://www.w3.org/2001/XMLSchema-instance',
+                   '_xmlns:xs'      => 'http://www.w3.org/2001/XMLSchema',
                    '_xsi:type'      => 'xs:string',
                    self::VALUE_KEY  => $value,
                 );
