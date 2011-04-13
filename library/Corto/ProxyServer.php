@@ -871,12 +871,12 @@ class Corto_ProxyServer
                                 ),
                             ),
                         ),
-                    ),
-                    'ds:DigestMethod' => array(
-                        '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#sha1',
-                    ),
-                    'ds:DigestValue' => array(
-                        '__v' => '__placeholder__',
+                        'ds:DigestMethod' => array(
+                            '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#sha1',
+                        ),
+                        'ds:DigestValue' => array(
+                            '__v' => '__placeholder__',
+                        ),
                     ),
                 ),
             ),
