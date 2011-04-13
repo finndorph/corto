@@ -12,6 +12,8 @@ class Corto_ProxyServer_Exception extends Exception
 
 class Corto_ProxyServer
 {
+    const ID_PREFIX = 'CORTO';
+
     const MODULE_BINDINGS   = 'Bindings';
     const MODULE_SERVICES   = 'Services';
 
@@ -871,7 +873,7 @@ class Corto_ProxyServer
 
     public function getNewId()
     {
-        return sha1(uniqid(mt_rand(), true));
+        return self::ID_PREFIX . sha1(uniqid(mt_rand(), true));
     }
 
     public function startSession()
