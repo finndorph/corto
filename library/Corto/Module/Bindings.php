@@ -538,7 +538,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     protected function _verifySignatureXMLElement($publicKey, $xml, $element)
     {
         $signatureValue = base64_decode($element['ds:Signature']['ds:SignatureValue']['__v']);
-        $digestValue    = base64_decode($element['ds:Signature']['ds:SignedInfo']['ds:Reference']['ds:DigestValue']['__v']);
+        $digestValue    = base64_decode($element['ds:Signature']['ds:SignedInfo']['ds:Reference'][0]['ds:DigestValue']['__v']);
 
         $document = DOMDocument::loadXML($xml);
         $xp = new DomXPath($document);
@@ -772,24 +772,18 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         } else {
             if ($name == 'SAMLRequest' && ($remoteEntity['WantsAuthnRequestsSigned'] || $this->_server->getCurrentEntitySetting('AuthnRequestsSigned'))) {
                 $this->_server->getSessionLog()->debug("HTTP-Redirect: (Re-)Signing");
-                $message = $this->_sign(
-                    $this->_getCurrentEntityPrivateKey(),
-                    $message
-                );
+                $message = $this->_server->sign($message);
             }
             else if ($name == 'SAMLResponse' && isset($remoteEntity['WantsAssertionsSigned']) && $remoteEntity['WantsAssertionsSigned']) {
                 $this->_server->getSessionLog()->debug("HTTP-Redirect: (Re-)Signing Assertion");
 
                 $message['saml:Assertion']['__t'] = 'saml:Assertion';
                 $message['saml:Assertion']['_xmlns:saml'] = "urn:oasis:names:tc:SAML:2.0:assertion";
-                unset($message['saml:Assertion']['ds:Signature']);
+                $message['saml:Assertion']['ds:Signature'] = '__placeholder__';
 
                 uksort($message['saml:Assertion'], array(__CLASS__, '_usortAssertion'));
 
-                $message['saml:Assertion'] = $this->_sign(
-                    $this->_getCurrentEntityPrivateKey(),
-                    $message['saml:Assertion']
-                );
+                $message['saml:Assertion'] = $this->_server->sign($message['saml:Assertion']);
                 #$enc = docrypt(certs::$server_crt, $message['saml:Assertion'], 'saml:EncryptedAssertion');
 
             }
@@ -798,10 +792,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
                 uksort($message['saml:Assertion'], array(__CLASS__, '_usortAssertion'));
 
-                $message = $this->_sign(
-                    $this->_getCurrentEntityPrivateKey(),
-                    $message
-                );
+                $message = $this->_server->sign($message);
             }
 
             $encodedMessage = Corto_XmlToArray::array2xml($message);
@@ -869,14 +860,16 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
                     '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
                 ),
                 'ds:Reference' => array(
-                    '_URI' => '__placeholder__',
-                    'ds:Transforms' => array(
-                        'ds:Transform' => array(
-                            array(
-                                '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-                            ),
-                            array(
-                                '_Algorithm' => 'http://www.w3.org/2001/10/xml-exc-c14n#',
+                    0 => array(
+                        '_URI' => '__placeholder__',
+                        'ds:Transforms' => array(
+                            'ds:Transform' => array(
+                                array(
+                                    '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+                                ),
+                                array(
+                                    '_Algorithm' => 'http://www.w3.org/2001/10/xml-exc-c14n#',
+                                ),
                             ),
                         ),
                     ),
@@ -888,12 +881,15 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
                     ),
                 ),
             ),
+            'ds:SignatureValue' => array(
+                '__v' => '__placeholder__',
+            )
         );
 
         $canonicalXml = DOMDocument::loadXML(Corto_XmlToArray::array2xml($element))->firstChild->C14N(true, false);
 
-        $signature['ds:SignedInfo']['ds:Reference']['ds:DigestValue']['__v'] = base64_encode(sha1($canonicalXml, TRUE));
-        $signature['ds:SignedInfo']['ds:Reference']['_URI'] = "#" . $element['_ID'];
+        $signature['ds:SignedInfo']['ds:Reference'][0]['ds:DigestValue']['__v'] = base64_encode(sha1($canonicalXml, TRUE));
+        $signature['ds:SignedInfo']['ds:Reference'][0]['_URI'] = "#" . $element['_ID'];
 
         $canonicalXml2 = DOMDocument::loadXML(Corto_XmlToArray::array2xml($signature['ds:SignedInfo']))->firstChild->C14N(true, false);
 
@@ -917,8 +913,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
         return $newElement;
     }
-
-
 
     protected static function _usortAssertion($a, $b)
     {

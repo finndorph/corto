@@ -364,6 +364,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
             '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
             '_entityID' => $this->_server->getCurrentEntityUrl('idPMetadataService'),
+            '_ID' => $this->_server->getNewId(),
+            'ds:Signature' => '__placeholder__',
             'md:IDPSSODescriptor' => array(
                 '_protocolSupportEnumeration' => "urn:oasis:names:tc:SAML:2.0:protocol",
             ),
@@ -378,7 +380,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
                     'ds:KeyInfo' => array(
                         'ds:X509Data' => array(
                             'ds:X509Certificate' => array(
-                                '__v' => self::_getCertDataFromPem($certificates['public']),
+                                '__v' => $this->_server->getCertDataFromPem($certificates['public']),
                             ),
                         ),
                     ),
@@ -389,7 +391,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
                     'ds:KeyInfo' => array(
                         'ds:X509Data' => array(
                             'ds:X509Certificate' => array(
-                                '__v' => self::_getCertDataFromPem($certificates['public']),
+                                '__v' => $this->_server->getCertDataFromPem($certificates['public']),
                             ),
                         ),
                     ),
@@ -405,7 +407,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             '_Location' => $this->_server->getCurrentEntityUrl('singleSignOnService'),
         );
 
-        $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntityDescriptor', true);
+        $entityDescriptor = $this->_server->sign($entityDescriptor);
+        $xml = Corto_XmlToArray::array2xml($entityDescriptor);
 
         $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
         if ($this->_server->getConfig('debug', false)  && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
@@ -434,6 +437,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
             '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
             '_entityID' => $this->_server->getCurrentEntityUrl('sPMetadataService'),
+            '_ID' => $this->_server->getNewId(),
+            'ds:Signature' => '__placeholder__',
             'md:SPSSODescriptor' => array(
                 '_protocolSupportEnumeration' => "urn:oasis:names:tc:SAML:2.0:protocol",
             ),
@@ -448,7 +453,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
                     'ds:KeyInfo' => array(
                         'ds:X509Data' => array(
                             'ds:X509Certificate' => array(
-                                '__v' => self::_getCertDataFromPem($certificates['public']),
+                                '__v' => $this->_server->getCertDataFromPem($certificates['public']),
                             ),
                         ),
                     ),
@@ -459,7 +464,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
                     'ds:KeyInfo' => array(
                         'ds:X509Data' => array(
                             'ds:X509Certificate' => array(
-                                '__v' => self::_getCertDataFromPem($certificates['public']),
+                                '__v' => $this->_server->getCertDataFromPem($certificates['public']),
                             ),
                         ),
                     ),
@@ -476,7 +481,9 @@ class Corto_Module_Services extends Corto_Module_Abstract
             '_index' => '1',
         );
 
-        $xml = Corto_XmlToArray::array2xml($entityDescriptor, 'md:EntityDescriptor', true);
+        $entityDescriptor = $this->_server->sign($entityDescriptor);
+
+        $xml = Corto_XmlToArray::array2xml($entityDescriptor);
 
         $schemaUrl = 'http://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd';
         if ($this->_server->getConfig('debug', false) && ini_get('allow_url_fopen') && file_exists($schemaUrl)) {
@@ -545,23 +552,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
     protected function _transformIdpsForWayf($idps)
     {
         return $idps;
-    }
-
-    protected static function _getCertDataFromPem($pemKey)
-    {
-        $lines = explode("\n", $pemKey);
-        $data = '';
-        foreach ($lines as $line) {
-            $line = rtrim($line);
-            if ($line === '-----BEGIN CERTIFICATE-----') {
-                $data = '';
-            } elseif ($line === '-----END CERTIFICATE-----') {
-                break;
-            } else {
-                $data .= $line . PHP_EOL;
-            }
-        }
-        return $data;
     }
 
     protected function _hasStoredConsent($serviceProviderEntityId, $response, $responseAttributes)

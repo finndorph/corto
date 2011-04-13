@@ -837,6 +837,106 @@ class Corto_ProxyServer
 //////// UTILITIES /////////
 
     /**
+     * Sign a Corto_XmlToArray array with XML.
+     *
+     * @param  $element    Element to sign
+     * @return array Signed element
+     */
+    public function sign(array $element)
+    {
+        $certificates = $this->getCurrentEntitySetting('certificates', array());
+
+        $signature = array(
+            '__t' => 'ds:Signature',
+            '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
+            'ds:SignedInfo' => array(
+                '__t' => 'ds:SignedInfo',
+                '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
+                'ds:CanonicalizationMethod' => array(
+                    '_Algorithm' => 'http://www.w3.org/2001/10/xml-exc-c14n#',
+                ),
+                'ds:SignatureMethod' => array(
+                    '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
+                ),
+                'ds:Reference' => array(
+                    0 => array(
+                        '_URI' => '__placeholder__',
+                        'ds:Transforms' => array(
+                            'ds:Transform' => array(
+                                array(
+                                    '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+                                ),
+                                array(
+                                    '_Algorithm' => 'http://www.w3.org/2001/10/xml-exc-c14n#',
+                                ),
+                            ),
+                        ),
+                    ),
+                    'ds:DigestMethod' => array(
+                        '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#sha1',
+                    ),
+                    'ds:DigestValue' => array(
+                        '__v' => '__placeholder__',
+                    ),
+                ),
+            ),
+            'ds:SignatureValue' => array(
+                '__v' => '__placeholder__',
+            ),
+            'ds:KeyInfo' => array(
+                'ds:X509Data' => array(
+                    'ds:X509Certificate' => array(
+                        '__v' => $this->getCertDataFromPem($certificates['public']),
+                    ),
+                ),
+            ),
+        );
+
+        $canonicalXml = DOMDocument::loadXML(Corto_XmlToArray::array2xml($element))->firstChild->C14N(true, false);
+
+        $signature['ds:SignedInfo']['ds:Reference'][0]['ds:DigestValue']['__v'] = base64_encode(sha1($canonicalXml, TRUE));
+        $signature['ds:SignedInfo']['ds:Reference'][0]['_URI'] = "#" . $element['_ID'];
+
+        $canonicalXml2 = DOMDocument::loadXML(Corto_XmlToArray::array2xml($signature['ds:SignedInfo']))->firstChild->C14N(true, false);
+
+        if (!isset($certificates['private'])) {
+            throw new Corto_ProxyServer_Exception('Current entity has no private key, unable to sign message! Please set ["certificates"]["private"]!');
+        }
+        $privateKey = openssl_pkey_get_private($certificates['private']);
+        if ($privateKey === false) {
+            throw new Corto_ProxyServer_Exception("Current entity ['certificates']['private'] value is NOT a valid PEM formatted SSL private key?!? Value: " . $certificates['private']);
+        }
+
+        $signatureValue = null;
+        openssl_sign($canonicalXml2, $signatureValue, $privateKey);
+        openssl_free_key($privateKey);
+
+        $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
+
+        $element['ds:Signature'] = $signature;
+        $element[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Signed'] = true;
+
+        return $element;
+    }
+
+    public function getCertDataFromPem($pemKey)
+    {
+        $lines = explode("\n", $pemKey);
+        $data = '';
+        foreach ($lines as $line) {
+            $line = rtrim($line);
+            if ($line === '-----BEGIN CERTIFICATE-----') {
+                $data = '';
+            } elseif ($line === '-----END CERTIFICATE-----') {
+                break;
+            } else {
+                $data .= $line . PHP_EOL;
+            }
+        }
+        return $data;
+    }
+
+    /**
      * For a given url hosted by this Corto installation, get the EntityCode, remoteIdPMd5Hash and ServiceName.
      *
      * Gets the PATH_INFO from a URL like: http://host/path/corto.php/path/info
