@@ -146,7 +146,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
      */
     public function continueToIdP()
     {
-        $selectedIdp = $_REQUEST['idp'];
+        $selectedIdp = urldecode($_REQUEST['idp']);
         if (!$selectedIdp) {
             throw new Corto_Module_Services_Exception('No IdP selected after WAYF');
         }
