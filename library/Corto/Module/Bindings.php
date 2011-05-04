@@ -202,9 +202,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         }
 
         $sourceEntity = $this->_server->getRemoteEntity($artifacts['sourceid']);
-        if (!$sourceEntity) {
-            throw new Corto_Module_Bindings_Exception("Entity {$artifacts['sourceid']} mentioned in SAML2 Artifact not registered!");
-        }
         if (!isset($sourceEntity['ArtifactResolutionServiceLocation'])) {
             throw new Corto_Module_Bindings_Exception("Entity {$artifacts['sourceid']} mentioned in SAML2 Artifact found, but no Artifact Resolution Service is registered");
         }
@@ -341,8 +338,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     protected function _verifyKnownIssuer(array $message)
     {
         $messageIssuer = $message['saml:Issuer']['__v'];
-        $remoteEntity = $this->_server->getRemoteEntity($messageIssuer);
-        if ($remoteEntity===null) {
+        try {
+            $remoteEntity = $this->_server->getRemoteEntity($messageIssuer);
+        } catch (Corto_ProxyServer_Exception $e) {
             throw new Corto_Module_Bindings_UnknownIssuerException("Issuer '{$messageIssuer}' is not a known remote entity? (please add SP/IdP to Remote Entities)");
         }
         return $remoteEntity;

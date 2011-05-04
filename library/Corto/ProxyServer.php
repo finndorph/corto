@@ -222,11 +222,12 @@ class Corto_ProxyServer
 
     public function getRemoteEntity($entityId)
     {
-        if (isset($this->_entities['remote'][$entityId])) {
-            $entity = $this->_entities['remote'][$entityId];
-            $entity['EntityId'] = $entityId;
-            return $entity;
+        if (!isset($this->_entities['remote'][$entityId])) {
+            throw new Corto_ProxyServer_Exception("Unknown remote entity '$entityId'");
         }
+        $entity = $this->_entities['remote'][$entityId];
+        $entity['EntityId'] = $entityId;
+        return $entity;
     }
 
     public function getRemoteEntities()
@@ -354,7 +355,7 @@ class Corto_ProxyServer
         $_SESSION[$newId]['SAMLRequest'] = $request;
         $_SESSION[$newId]['_InResponseTo'] = $originalId;
 
-        $this->getBindingsModule()->send($newRequest, $this->_entities['remote'][$idpEntityId]);
+        $this->getBindingsModule()->send($newRequest, $this->getRemoteEntity($idpEntityId));
     }
 
     /**
@@ -366,7 +367,7 @@ class Corto_ProxyServer
      */
     public function createEnhancedRequest($originalRequest, $idp, array $scoping = null)
     {
-        $remoteMetaData = $this->_entities['remote'][$idp];
+        $remoteMetaData = $this->getRemoteEntity($idp);
         $request = array(
             Corto_XmlToArray::TAG_NAME_KEY       => 'samlp:AuthnRequest',
             Corto_XmlToArray::PRIVATE_KEY_PREFIX => array(
