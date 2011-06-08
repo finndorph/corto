@@ -273,11 +273,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             return false;
         }
 
-        // Don't use $_GET for retrieval because base64 may contain a + sign which PHP auto-urldecodes to a space.
-        $queryParams = array();
-        parse_str($_SERVER['QUERY_STRING'], $queryParams);
-
-        $message = gzinflate(base64_decode($queryParams[$key]));
+        $message = gzinflate(base64_decode($_GET[$key]));
         $messageArray = $this->_getArrayFromReceivedMessage($message);
 
         if (isset($_GET['RelayState'])) {
