@@ -273,7 +273,16 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             return false;
         }
 
-        $message = gzinflate(base64_decode($_GET[$key]));
+        $message = @base64_decode($_GET[$key], true);
+        if (!$message) {
+            throw new Corto_Module_Bindings_UnableToReceiveMessageException("Message not base64 encoded!");
+        }
+
+        $message = @gzinflate($message);
+        if (!$message) {
+            throw new Corto_Module_Bindings_UnableToReceiveMessageException("Message not gzipped!");
+        }
+        
         $messageArray = $this->_getArrayFromReceivedMessage($message);
 
         if (isset($_GET['RelayState'])) {
