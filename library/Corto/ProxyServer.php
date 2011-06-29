@@ -650,9 +650,7 @@ class Corto_ProxyServer
 
         // Get the ID of the original request (from the SP)
         if (!isset($_SESSION[$id]['_InResponseTo'])) {
-            echo "<pre>";
-            var_dump($_SESSION);
-            echo "</pre>";
+            $this->_server->getSessionLog()->debug(print_r($_SESSION, true));
             throw new Corto_ProxyServer_Exception("ID `$id` does not have a _InResponseTo?!?");
         }
         $originalRequestId = $_SESSION[$id]['_InResponseTo'];
