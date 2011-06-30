@@ -66,11 +66,18 @@ class Corto_Module_Services extends Corto_Module_Abstract
             }
         }
 
-        $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
+        $this->_server->getSessionLog()->debug(
+            "SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1)
+        );
                 
         // If we have scoping, filter out every non-scoped IdP
-        $candidateIDPs = sizeof($scopedIDPs) > 0 ? array_intersect($scopedIDPs, $candidateIDPs) : $candidateIDPs;
-        $this->_server->getSessionLog()->debug("SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1));
+        if (count($scopedIDPs) > 0) {
+            $candidateIDPs = array_intersect($scopedIDPs, $candidateIDPs);
+        }
+
+        $this->_server->getSessionLog()->debug(
+            "SSO: Candidate idps found in metadata after scoping: " . print_r($candidateIDPs, 1)
+        );
 
         // No IdPs found! Send an error response back.
         if (count($candidateIDPs) === 0) {
