@@ -59,12 +59,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // Get all registered Single Sign On Services
-        $candidateIDPs = array();
-        foreach ($this->_server->getRemoteEntities() as $remoteEntityId => $remoteEntity) {
-            if (isset($remoteEntity['SingleSignOnService'])) {
-                $candidateIDPs[] = $remoteEntityId;
-            }
-        }
+        $candidateIDPs = $this->_server->getIdpEntityIds();
 
         $this->_server->getSessionLog()->debug(
             "SSO: Candidate idps found in metadata: " . print_r($candidateIDPs, 1)

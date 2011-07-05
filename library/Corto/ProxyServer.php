@@ -235,6 +235,17 @@ class Corto_ProxyServer
         return array_intersect($this->_entities['remote'], array($this->_entities['current']));
     }
 
+    public function getIdpEntityIds()
+    {
+        $idps = array();
+        foreach ($this->_server->getRemoteEntities() as $remoteEntityId => $remoteEntity) {
+            if (isset($remoteEntity['SingleSignOnService'])) {
+                $idps[] = $remoteEntityId;
+            }
+        }
+        return $idps;
+    }
+
     public function setRemoteEntities($entities)
     {
         $this->_entities['remote'] = $entities;
