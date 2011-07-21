@@ -585,12 +585,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
         // Check SAMLResponse SubjectConfirmation timings
 
-        if (isset($message['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_NotBefore'])) {
-            if ($inAShortWhile < $message['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_NotBefore']) {
-                $issues[] = 'SubjectConfirmation not valid yet';
-            }
-        }
-
         if (isset($message['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_NotOnOrAfter'])) {
             if ($aShortWhileAgo > $message['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData']['_NotOnOrAfter']) {
                 $issues[] = 'SubjectConfirmation too old';
