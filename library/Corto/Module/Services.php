@@ -281,6 +281,9 @@ class Corto_Module_Services extends Corto_Module_Abstract
         if (!isset($_SESSION['consent'])) {
             throw new Corto_Module_Services_SessionLostException('Session lost after consent');
         }
+        if (!isset($_SESSION['consent'][$_POST['ID']]['response'])) {
+            throw new Corto_Module_Services_Exception("Stored response for ResponseID '{$_POST['ID']}' not found");
+        }
         $response = $_SESSION['consent'][$_POST['ID']]['response'];
 
         $attributes = Corto_XmlToArray::attributes2array(
