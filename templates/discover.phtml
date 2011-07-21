@@ -6,8 +6,8 @@
     </head>
     <body>
         <form method="post" action="<?= $action ?>">
-            <input type="hidden" name="cortopassthru" value="<?= $cortopassthru ?>" />
-            <select name="_idp_">
+            <input type="hidden" name="ID" value="<?= $ID ?>" />
+            <select name="idp">
                 <? foreach($idpList as $idp): ?>
                 <option value="<?= $idp ?>"><?= $idp ?></option>
                 <? endforeach ?>
