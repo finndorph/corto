@@ -367,7 +367,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $entityDescriptor = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'md:EntityDescriptor',
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
-            '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
+            '_validUntil' => $this->_server->timeStamp($this->_server->getCurrentEntitySetting(
+                                                           'idpMetadataValidUntilSeconds', 86400)),
             '_entityID' => $this->_server->getCurrentEntityUrl('idPMetadataService'),
             '_ID' => $this->_server->getNewId(),
             'ds:Signature' => '__placeholder__',
@@ -440,7 +441,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $entityDescriptor = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'md:EntityDescriptor',
             '_xmlns:md' => 'urn:oasis:names:tc:SAML:2.0:metadata',
-            '_validUntil' => $this->_server->timeStamp(strtotime('tomorrow') - time()),
+            '_validUntil' => $this->_server->timeStamp($this->_server->getCurrentEntitySetting(
+                                                           'idpMetadataValidUntilSeconds', 86400)),
             '_entityID' => $this->_server->getCurrentEntityUrl('sPMetadataService'),
             '_ID' => $this->_server->getNewId(),
             'ds:Signature' => '__placeholder__',
