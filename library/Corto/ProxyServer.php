@@ -719,6 +719,9 @@ class Corto_ProxyServer {
     {
         $response = $this->_createBaseResponse($request);
         $response['samlp:Status'] = $sourceResponse['samlp:Status'];
+        if (nvl($response['samlp:Status']['samlp:StatusCode'], '_Value') != 'urn:oasis:names:tc:SAML:2.0:status:Success') {              
+            return $response; 
+        }
         $response['saml:Assertion'] = $sourceResponse['saml:Assertion'];
         unset($response['saml:Assertion']['ds:Signature']);
 
