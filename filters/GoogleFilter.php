@@ -11,8 +11,10 @@ class GoogleFilter {
 
     static function google($params)
     {
+        if (nvl($params['cortodata']['response']['samlp:Status']['samlp:StatusCode'], '_Value') != 'urn:oasis:names:tc:SAML:2.0:status:Success') {
+            return $params['cortodata'];                                                                                             
+        } 
         $uid = 'antonten';
-        #self::provision($uid, '1234567890', 'Anton', 'Banton');
         $acs = $params['cortodata']['response']['_Destination'];
         $assertion = &$params['cortodata']['response']['saml:Assertion'];
         $samlattribute = $assertion['saml:AttributeStatement'][0]['saml:Attribute'];
@@ -21,7 +23,6 @@ class GoogleFilter {
         preg_match("/^(.*)@/", $attributes['eduPersonPrincipalName'][0], $dollar);
 
         $mail = $dollar[1];
-        #$mail = $uid;
 
         unset($assertion['saml:AttributeStatement']);
         unset($assertion['ds:Signature']);
