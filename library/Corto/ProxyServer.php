@@ -181,6 +181,7 @@ class Corto_ProxyServer
         if (isset($this->_entities['hosted'][$entityId])) {
             return $entityId;
         }
+        return false;
     }
 
     public function getCurrentEntityUrl($serviceName = "", $remoteEntityId = "")
@@ -583,11 +584,14 @@ class Corto_ProxyServer
     protected function _createBaseResponse($request)
     {
         $now = $this->timeStamp();
+        $destinationID = $request['saml:Issuer']['__v'];
+
         $response = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'samlp:Response',
             Corto_XmlToArray::PRIVATE_KEY_PREFIX => array(
                 'paramname' => 'SAMLResponse',
                 'RelayState'=> $request['__']['RelayState'],
+                'destinationid' => $destinationID,
             ),
             '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
             '_xmlns:saml'  => 'urn:oasis:names:tc:SAML:2.0:assertion',
@@ -597,16 +601,13 @@ class Corto_ProxyServer
             '_IssueInstant' => $now,
             '_InResponseTo' => $request['_ID'],
 
-            'saml:Issuer' => array('__v' => $this->getCurrentEntityUrl('idPMetadataService')),
+            'saml:Issuer' => array('__v' => $this->getCurrentEntityUrl('idPMetadataService', $destinationID)),
             'samlp:Status' => array(
                 'samlp:StatusCode' => array(
                     '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
                 ),
             ),
         );
-
-        $destinationID = $request['saml:Issuer']['__v'];
-        $response['__']['destinationid'] = $destinationID;
 
         $acs = $this->_getRequestAssertionConsumer($request);
         $response['_Destination']           = $acs['Location'];
@@ -951,7 +952,6 @@ class Corto_ProxyServer
      * Gets the PATH_INFO from a URL like: http://host/path/corto.php/path/info
      *
      * @param string $url
-     * @return void
      */
     public function getParametersFromUrl($url)
     {

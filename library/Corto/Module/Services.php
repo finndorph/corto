@@ -15,47 +15,33 @@ class Corto_Module_Services extends Corto_Module_Abstract
     const DEFAULT_REQUEST_BINDING  = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
     const DEFAULT_RESPONSE_BINDING = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST';
 
+    const RESPONSE_CACHE_TYPE_IN  = 'in';
+    const RESPONSE_CACHE_TYPE_OUT = 'out';
+
     /**
      * Handle a Single Sign On request (Authentication Request)
+     * @return void
      */
     public function singleSignOnService()
     {
         $request = $this->_server->getBindingsModule()->receiveRequest();
         $request['__']['Transparent'] = $this->_server->getCurrentEntitySetting('TransparentProxy', false);
 
-        // If ForceAuthn attribute is on, then remove cached responses and cached IDPs
-        if ($request['_ForceAuthn']) {
-            $this->_server->getSessionLog()->debug('SSO: Forcing new authentication, cached responses removed');
-            unset($_SESSION['CachedResponses']);
-        }
-
         // The request may specify it ONLY wants a response from specific IdPs
         // or we could have it configured that the SP may only be serviced by specific IdPs
-        $scopedIDPs = $this->_getScopedIdPs($request);
+        $scopedIdps = $this->_getScopedIdPs($request);
 
-        // If one of the scoped IDP has a cache entry, return that
-        if (isset($_SESSION['CachedResponses'])) {
-            $cachedIDPs = array_keys((array) $_SESSION['CachedResponses']);
-
-            // If we have IdPs scoping, then don't use cached responses from other IdPs
-            if (count($scopedIDPs) > 0) {
-                $cachedIDPs = array_intersect($cachedIDPs, $scopedIDPs);
-            }
-
-            // If we have cached responses from one or more IdPs, then we return the first cached response we find.
-            if (!empty($cachedIDPs)) {
-                $this->_server->getSessionLog()->debug("SSO: Cached response found");
-                $cachedResponse = $_SESSION['CachedResponses'][$cachedIDPs[0]];
-                $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
-                return $this->_server->sendResponseToRequestIssuer($request, $response);
-            }
+        $cacheResponseSent = $this->_sendCachedResponse($request, $scopedIdps);
+        if ($cacheResponseSent) {
+            return;
         }
 
         // If the scoped proxycount = 0, respond with a ProxyCountExceeded error
         if (isset($request['samlp:Scoping']['_ProxyCount']) && $request['samlp:Scoping']['_ProxyCount'] == 0) {
             $this->_server->getSessionLog()->debug("SSO: Proxy count exceeded!");
             $response = $this->_server->createErrorResponse($request, 'ProxyCountExceeded');
-            return $this->_server->sendResponseToRequestIssuer($request, $response);
+            $this->_server->sendResponseToRequestIssuer($request, $response);
+            return;
         }
 
         // Get all registered Single Sign On Services
@@ -66,8 +52,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
         );
                 
         // If we have scoping, filter out every non-scoped IdP
-        if (count($scopedIDPs) > 0) {
-            $candidateIDPs = array_intersect($scopedIDPs, $candidateIDPs);
+        if (count($scopedIdps) > 0) {
+            $candidateIDPs = array_intersect($scopedIdps, $candidateIDPs);
         }
 
         $this->_server->getSessionLog()->debug(
@@ -79,21 +65,24 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $this->_server->getSessionLog()->debug("SSO: No Supported Idps!");
             if ($this->_server->getConfig('NoSupportedIDPError')!=='user') {
                 $response = $this->_server->createErrorResponse($request, 'NoSupportedIDP');
-                return $this->_server->sendResponseToRequestIssuer($request, $response);
+                $this->_server->sendResponseToRequestIssuer($request, $response);
+                return;
             }
             else {
                 $output = $this->_server->renderTemplate(
                     'noidps',
                     array(
                 ));
-                return $this->_server->sendOutput($output);
+                $this->_server->sendOutput($output);
+                return;
             }
         }
         // Exactly 1 candidate found, send authentication request to the first one
         else if (count($candidateIDPs) === 1) {
             $idp = $candidateIDPs[0];
             $this->_server->getSessionLog()->debug("SSO: Only 1 candidate IdP: $idp");
-            return $this->_server->sendAuthenticationRequest($request, $idp);
+            $this->_server->sendAuthenticationRequest($request, $idp);
+            return;
         }
         // Multiple IdPs found...
         else {
@@ -101,17 +90,99 @@ class Corto_Module_Services extends Corto_Module_Abstract
             if (isset($request['_IsPassive']) && $request['_IsPassive'] === 'true') {
                 $this->_server->getSessionLog()->debug("SSO: IsPassive with multiple IdPs!");
                 $response = $this->_server->createErrorResponse($request, 'NoPassive');
-                return $this->_server->sendResponseToRequestIssuer($request, $response);
+                $this->_server->sendResponseToRequestIssuer($request, $response);
+                return;
+            }
+            else {
+                // Store the request in the session
+                $id = $request['_ID'];
+                $_SESSION[$id]['SAMLRequest'] = $request;
+
+                // Show WAYF
+                $this->_server->getSessionLog()->debug("SSO: Showing WAYF");
+                $this->_showWayf($request, $candidateIDPs);
+                return;
+            }
+        }
+    }
+
+    protected function _sendCachedResponse($request, $scopedIdps)
+    {
+        if (isset($request['_ForceAuthn']) && $request['_ForceAuthn']) {
+            return false;
+        }
+
+        if (!isset($_SESSION['CachedResponses'])) {
+            return false;
+        }
+
+        $cachedResponses = $_SESSION['CachedResponses'];
+
+        $requestIssuerEntityId  = $request['saml:Issuer']['__v'];
+
+        // First, if there is scoping, we reject responses from idps not in the list
+        if (count($scopedIdps) > 0) {
+            foreach ($cachedResponses as $key => $cachedResponse) {
+                if (!in_array($cachedResponse['idp'], $scopedIdps)) {
+                    unset($cachedResponses[$key]);
+                }
+            }
+        }
+        if (empty($cachedResponses)) {
+            return false;
+        }
+
+        $cachedResponse = $this->_pickCachedResponse($cachedResponses, $request, $requestIssuerEntityId);
+        if (!$cachedResponse) {
+            return false;
+        }
+
+        if ($cachedResponse['type'] === self::RESPONSE_CACHE_TYPE_OUT) {
+            $this->_server->getSessionLog()->debug("SSO: Cached response found for SP");
+            $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
+            $this->_server->sendResponseToRequestIssuer($request, $response);
+        }
+        else {
+            $this->_server->getSessionLog()->debug("SSO: Cached response found from Idp");
+            // Note that we would like to repurpose the response,
+            // but that's tricky as it is probably no longer valid (lifetime is usually something like 5 minutes)
+            // so instead we scope the request to that Idp and trust the Idp to do the remembering.
+            $this->_server->sendAuthenticationRequest($request, $cachedResponse['idp']);
+        }
+        return true;
+    }
+
+    protected function _pickCachedResponse(array $cachedResponses, $request, $requestIssuerEntityId)
+    {
+        // Then we look for OUT responses for this sp
+        foreach ($cachedResponses as $cachedResponse) {
+            if ($cachedResponse['type'] !== self::RESPONSE_CACHE_TYPE_OUT) {
+                continue;
             }
 
-            // Store the request in the session
-            $id = $request['_ID'];
-            $_SESSION[$id]['SAMLRequest'] = $request;
+            if ($cachedResponse['sp'] !== $requestIssuerEntityId) {
+                continue;
+            }
 
-            // Show WAYF
-            $this->_server->getSessionLog()->debug("SSO: Showing WAYF");
-            return $this->_showWayf($request, $candidateIDPs);
+            return $cachedResponse;
         }
+
+        // Then we look for IN responses for this sp
+        $idpEntityIds = $idpEntityIds = $this->_server->getIdpEntityIds();
+        foreach ($cachedResponses as $cachedResponse) {
+            if ($cachedResponse['type'] !== self::RESPONSE_CACHE_TYPE_IN) {
+                continue;
+            }
+
+            // Check if it is for a valid idp
+            if (!in_array($cachedResponse['idp'], $idpEntityIds)) {
+                continue;
+            }
+
+            return $cachedResponse;
+        }
+
+        return false;
     }
 
     protected function _getScopedIdPs($request = null)
@@ -181,6 +252,11 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
         $receivedRequest = $this->_server->getReceivedRequestFromResponse($receivedResponse['_InResponseTo']);
 
+        // Cache the response
+        if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
+            $this->_cacheResponse($receivedRequest, $receivedResponse, self::RESPONSE_CACHE_TYPE_IN);
+        }
+
         $this->_server->filterInputAssertionAttributes($receivedResponse, $receivedRequest);
 
         $processingEntities = $this->_getReceivedResponseProcessingEntities($receivedRequest, $receivedResponse);
@@ -200,18 +276,33 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $attributes['ServiceProvider'] = array($receivedRequest['saml:Issuer']['__v']);
             $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
 
-            return $this->_server->getBindingsModule()->send($receivedResponse, $firstProcessingEntity);
+            $this->_server->getBindingsModule()->send($receivedResponse, $firstProcessingEntity);
         }
         else {
             // Cache the response
             if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-                $issuerEntityId = $receivedResponse['saml:Issuer']['__v'];
-                $_SESSION['CachedResponses'][$issuerEntityId] = $receivedResponse;
+                $this->_cacheResponse($receivedRequest, $receivedResponse, self::RESPONSE_CACHE_TYPE_OUT);
             }
 
-            $receivedResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
-            return $this->_server->sendResponseToRequestIssuer($receivedRequest, $receivedResponse);
+            $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
+            $this->_server->sendResponseToRequestIssuer($receivedRequest, $newResponse);
         }
+    }
+
+    protected function _cacheResponse(array $receivedRequest, array $receivedResponse, $type)
+    {
+        $requestIssuerEntityId  = $receivedRequest['saml:Issuer']['__v'];
+        $responseIssuerEntityId = $receivedResponse['saml:Issuer']['__v'];
+        if (!isset($_SESSION['CachedResponses'])) {
+            $_SESSION['CachedResponses'] = array();
+        }
+        $_SESSION['CachedResponses'][] = array(
+            'sp'            => $requestIssuerEntityId,
+            'idp'           => $responseIssuerEntityId,
+            'type'          => $type,
+            'response'      => $receivedResponse,
+        );
+        return $_SESSION['CachedResponses'][count($_SESSION['CachedResponses']) - 1];
     }
 
     protected function _getReceivedResponseProcessingEntities(array $receivedRequest, array $receivedResponse)
@@ -253,10 +344,11 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $response['_Destination'] = $response['__']['Return'];
             $response['__']['ProtocolBinding'] = self::DEFAULT_RESPONSE_BINDING;
 
-            return $this->_server->getBindingsModule()->send(
+            $this->_server->getBindingsModule()->send(
                 $response,
                 $this->_server->getRemoteEntity($serviceProviderEntityId)
             );
+            return;
         }
 
         $html = $this->_server->renderTemplate(
@@ -332,7 +424,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $response['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
             $response['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
 
-            return $this->_server->getBindingsModule()->send($response, $nextProcessingEntity);
+            $this->_server->getBindingsModule()->send($response, $nextProcessingEntity);
+            return;
         }
         else { // Done processing! Send off to SP
             $response['_Destination']          = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
@@ -347,12 +440,12 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
             // Cache the response
             if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
-                $issuerEntityId = $response['saml:Issuer']['__v'];
-                $_SESSION['CachedResponses'][$issuerEntityId] = $response;
+                $this->_cacheResponse($receivedRequest, $response, self::RESPONSE_CACHE_TYPE_OUT);
             }
 
             $sentResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
-            return $this->_server->sendResponseToRequestIssuer($receivedRequest, $sentResponse);
+            $this->_server->sendResponseToRequestIssuer($receivedRequest, $sentResponse);
+            return;
         }
     }
 
@@ -596,7 +689,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
         } catch (PDOException $e) {
             throw new Corto_ProxyServer_Exception("Consent retrieval failed! Error: " . $e->getMessage());
         }
-        return false;
     }
 
     protected function _storeConsent($serviceProviderEntityId, $response, $attributes)
