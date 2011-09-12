@@ -206,7 +206,10 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             throw new Corto_Module_Bindings_Exception("Entity {$artifacts['sourceid']} mentioned in SAML2 Artifact found, but no Artifact Resolution Service is registered");
         }
 
-        $artifactResponse = $this->_soapRequest($sourceEntity['ArtifactResolutionServiceLocation'], $artifactResolveMessage);
+        $artifactResponse = $this->_soapRequest(
+            $sourceEntity['ArtifactResolutionServiceLocation'],
+            $artifactResolveMessage
+        );
 
         if ($key === self::KEY_REQUEST) {
             if (isset($artifactResponse['samlp:ArtifactResponse']['samlp:AuthnRequest'])) {
@@ -356,7 +359,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     }
 
     /**
-     * Canonicalize a request array.
+     * Transform a request array into a canonical form.
      * @param array $request
      */
     protected function _c14nRequest(array &$request)
