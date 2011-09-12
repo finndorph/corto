@@ -184,9 +184,14 @@ class Corto_ProxyServer
         return false;
     }
 
-    public function getCurrentEntityUrl($serviceName = "", $remoteEntityId = "")
+    public function getCurrentEntityUrl($serviceName = "", $remoteEntityId = "", $request = "")
     {
-        return $this->getHostedEntityUrl($this->_entities['current']['EntityCode'], $serviceName, $remoteEntityId);
+        return $this->getHostedEntityUrl(
+            $this->_entities['current']['EntityCode'],
+            $serviceName,
+            $remoteEntityId,
+            $request
+        );
     }
 
     public function getCurrentEntitySetting($name, $default = null)
@@ -601,7 +606,7 @@ class Corto_ProxyServer
             '_IssueInstant' => $now,
             '_InResponseTo' => $request['_ID'],
 
-            'saml:Issuer' => array('__v' => $this->getCurrentEntityUrl('idPMetadataService', $destinationID)),
+            'saml:Issuer' => array('__v' => $this->getCurrentEntityUrl('idPMetadataService', $destinationID, $request)),
             'samlp:Status' => array(
                 'samlp:StatusCode' => array(
                     '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
