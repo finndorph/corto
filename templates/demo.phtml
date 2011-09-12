@@ -1,67 +1,45 @@
 <html>
-<head>
-<style type="text/css" title="text/css">
-<!--
-body {
-	margin: 1em;
-	width: 50em;
-}
-
-tt {
-	color: #7BB84A;
-	font-size: inherited;
-	font-family: inherited;
-}
+    <head>
+        <style type="text/css" title="text/css">
+        <!--
+        body
+        {
+            margin: 1em;
+            width: 50em;
+        }
+		tt {
+			color: #7BB84A;
+			font-size: inherited;
+			font-family: inherited;
+		}
 -->
-</style>
-</head>
-<body>
-<? $corto_root = join("/", array_slice(explode("/", $_SERVER['SCRIPT_NAME']), 0, -1)); ?>
-<img alt="" src="<?= $corto_root . "/images/corto_logo.png"?>" width="100" />
-<br />
+        </style>
+    </head>
+    <body>
+        <img alt="" src="/corto/images/corto_logo.png" width="100" /><br />
+        <p>Welcome to the c<tt>o</tt>rto demopage.<p>Here you can play with the default identity- and serviceproviders distributed with corto:
+        <ul>
+        <li>'app' - an application 'provider' - this page
+        <li>'sp' - a service provider
+        <li>'wayf' - a proxy
+        <li>'idp' - an identity provider
+        <li>'auth' - an authentication provider.
+        </ul>In corto an authentication provider is scaled down
+        identity provider and an application provider is a scaled down service provider
+        which both only speaks 'SAML' in a json encoding of corto's 'internal' ordered map (ie. php array) representation of SAML entities.
+        <p>By pressing the "Demo" button a saml/json request will be sent to the sp, which sends it as real saml/xml to 'wayf', which sends it as saml/xml to 'idp',
+        which finally sends it as saml/json to 'null' where you get the chance to press an 'OK' button to start sending a response back. The saml request will be 
+        displayed
+        at 'null' in print_r format. When the response get back to
+        'app' it will also be displayed on this page in print_r format.
+        <?= $message ?>
+        <form method=POST action="<?= $action ?>">
+        	<input type=hidden name=doit value=1>
+            <input type=submit value="Demo">
+        </form>
 
-<p>Welcome to the c<tt>o</tt>rto demopage.</p>
-
-<p>Here you can play with the default identity- and serviceproviders
-distributed with corto:</p>
-<ul>
-	<li>'app' - an application 'provider' - this page
-	
-	
-	<li>'sp' - a service provider
-	
-	
-	<li>'wayf' - a proxy
-	
-	
-	<li>'idp' - an identity provider
-	
-	
-	<li>'auth' - an authentication provider.
-
-</ul>
-In corto an authentication provider is scaled down identity provider and
-an application provider is a scaled down service provider which both
-only speaks 'SAML' in a json encoding of corto's 'internal' ordered map
-(ie. php array) representation of SAML entities.
-<p>By pressing the "Demo" button a saml/json request will be sent to the
-sp, which sends it as real saml/xml to 'wayf', which sends it as
-saml/xml to 'idp', which finally sends it as saml/json to 'null' where
-you get the chance to press an 'OK' button to start sending a response
-back. The saml request will be displayed at 'null' in print_r format.
-When the response get back to 'app' it will also be displayed on this
-page in print_r format. At certain places in the processing of responses
-a Corto filter will step in and ask you to continue as well.</p>
-<form method=POST action="<?php echo $action ?>"><input type=hidden
-	name=doit value=1> <input type=submit value="Demo"></form>
-<form method=POST action="<?php echo $action ?>"><input type=hidden
-	name=doslo value=1> <input type=submit value="Demo SLO">
-	<input name=subject value="<?php echo isset($SAMLResponse['saml:Assertion']) ? htmlspecialchars(json_encode($SAMLResponse['saml:Assertion']['saml:Subject']['saml:NameID'])) : '' ?>">
-	</form>
-	
-<p><?php echo $message ?></p>
-<pre>
-<?php echo preg_replace("/\n\n/", "\n", preg_replace("/Array\n\s+/", "Array ", htmlspecialchars(print_r($SAMLResponse, 1)))); ?>
+        <pre>
+        <?= preg_replace("/\n\n/", "\n", preg_replace("/Array\n\s+/", "Array ", htmlspecialchars(print_r($hSAMLResponse, 1)))); ?>
         </pre>
-</body>
+    </body>
 </html>
