@@ -104,6 +104,10 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     {
         $response = $this->_receiveMessage(self::KEY_RESPONSE);
         $this->_server->getSessionLog()->debug("Received response: " . var_export($response, true));
+        if (isset($response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Binding']) &&
+            $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Binding'] === "INTERNAL") {
+            return $response;
+        }
 
         $this->_decryptResponse($response);
         $this->_verifyResponse($response);
@@ -152,7 +156,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             return false;
         }
         
-        return $_REQUEST[$key];
+        $message = $_REQUEST[$key];
+        $message[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Binding'] = "INTERNAL";
+        return $message;
     }
 
     /**
@@ -481,7 +487,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     protected function _verifyResponse(array &$response)
     {
         $this->_verifyKnownIssuer($response);
-
         if ($this->_server->getCurrentEntitySetting('WantsAssertionsSigned', false)) {
             $this->_verifySignature($response, self::KEY_RESPONSE);
             $request['__']['WasSigned'] = true;
@@ -501,21 +506,26 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $publicKey = $this->_getRemoteEntityPublicKey($messageIssuer);
         $publicKeyFallback = $this->_getRemoteEntityFallbackPublicKey($messageIssuer);
 
-        $messageVerified = $this->_verifySignatureXMLElement(
-            $publicKey,
-            $message['__']['Raw'],
-            $message
-        );
-        if (!$messageVerified && $publicKeyFallback) {
+        if (isset($message['ds:Signature'])) {
             $messageVerified = $this->_verifySignatureXMLElement(
-                $publicKeyFallback,
+                $publicKey,
                 $message['__']['Raw'],
                 $message
             );
+            if (!$messageVerified && $publicKeyFallback) {
+                $messageVerified = $this->_verifySignatureXMLElement(
+                    $publicKeyFallback,
+                    $message['__']['Raw'],
+                    $message
+                );
+            }
+            if (!$messageVerified) {
+                throw new Corto_Module_Bindings_VerificationException("Invalid signature on message");
+            }
         }
 
         if (!isset($message['saml:Assertion'])) {
-            return $messageVerified;
+            return true;
         }
 
         $assertionVerified = $this->_verifySignatureXMLElement(
@@ -530,7 +540,12 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
                 $message['saml:Assertion']
             );
         }
-        return ($messageVerified || $assertionVerified);
+
+        if (!$assertionVerified) {
+            throw new Corto_Module_Bindings_VerificationException("Invalid signature on assertion");
+        }
+
+        return true;
     }
 
     protected function _verifySignatureMessage($message, $key)
@@ -561,7 +576,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         }
         
         if (!$verified) {
-            throw new Corto_Module_Bindings_VerificationException("Invalid signature");
+            throw new Corto_Module_Bindings_VerificationException("Invalid signature for message");
         }
 
         return ($verified === 1);
@@ -573,7 +588,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $signatureValue = base64_decode($element['ds:Signature']['ds:SignatureValue']['__v']);
         $digestValue    = base64_decode($element['ds:Signature']['ds:SignedInfo']['ds:Reference'][0]['ds:DigestValue']['__v']);
 
-        $document = DOMDocument::loadXML($xml);
+        $document = new DOMDocument;
+        $document->loadXML($xml);
         $xp = new DomXPath($document);
         $xp->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
 
@@ -816,6 +832,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     protected function _sendHTTPPost($message, $remoteEntity)
     {
         $name = $message['__']['paramname'];
+        $extra = "";
         if ($message['__']['ProtocolBinding'] == 'JSON-POST') {
             if ($relayState = $message['__']['RelayState']) {
                 $relayState = "&RelayState=$relayState";
@@ -864,7 +881,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             }
         }
 
-        $extra  = isset($message['__']['RelayState']) ? '<input type="hidden" name="RelayState" value="' . htmlspecialchars($message['__']['RelayState']) . '">' : '';
+        $extra .= isset($message['__']['RelayState']) ? '<input type="hidden" name="RelayState" value="' . htmlspecialchars($message['__']['RelayState']) . '">' : '';
         $extra .= isset($message['__']['return'])     ? '<input type="hidden" name="return" value="'     . htmlspecialchars($message['__']['return']) . '">' : '';
         $encodedMessage = htmlspecialchars(base64_encode($encodedMessage));
 
@@ -955,6 +972,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
         $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
 
+        $newElement = $element;
         foreach ($element as $tag => $item) {
             if ($tag == 'ds:Signature') {
                 continue;

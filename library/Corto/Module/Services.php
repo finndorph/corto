@@ -266,17 +266,20 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalDestination'] = $receivedResponse['_Destination'];
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding']     = $receivedResponse['__']['ProtocolBinding'];
 
-            // Change the destiny of the received response
-            $receivedResponse['_Destination']           = $firstProcessingEntity['Location'];
-            $receivedResponse['__']['ProtocolBinding']  = $firstProcessingEntity['Binding'];
-            $receivedResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
 
-            $responseAssertionAttributes = &$receivedResponse['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
+            // Change the destiny of the received response
+            $newResponse['_InResponseTo']          = $receivedResponse['_InResponseTo'];
+            $newResponse['_Destination']           = $firstProcessingEntity['Location'];
+            $newResponse['__']['ProtocolBinding']  = $firstProcessingEntity['Binding'];
+            $newResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+
+            $responseAssertionAttributes = &$newResponse['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
             $attributes['ServiceProvider'] = array($receivedRequest['saml:Issuer']['__v']);
             $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
 
-            $this->_server->getBindingsModule()->send($receivedResponse, $firstProcessingEntity);
+            $this->_server->getBindingsModule()->send($newResponse, $firstProcessingEntity);
         }
         else {
             // Cache the response
@@ -416,22 +419,25 @@ class Corto_Module_Services extends Corto_Module_Abstract
         $response = $this->_server->getBindingsModule()->receiveResponse();
         $remainingProcessingEntities = &$_SESSION['Processing'][$response['_ID']]['RemainingEntities'];
 
+        $receivedRequest = $this->_server->getReceivedRequestFromResponse($response['_InResponseTo']);
+
         if (!empty($remainingProcessingEntities)) { // Moar processing!
             $nextProcessingEntity = array_shift($remainingProcessingEntities);
 
-            // Change the destiny of the received response
-            $response['_Destination']           = $nextProcessingEntity['Location'];
-            $response['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
-            $response['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
 
-            $this->_server->getBindingsModule()->send($response, $nextProcessingEntity);
+            // Change the destiny of the received response
+            $newResponse['_ID']                    = $response['_ID'];
+            $newResponse['_Destination']           = $nextProcessingEntity['Location'];
+            $newResponse['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
+            $newResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+
+            $this->_server->getBindingsModule()->send($newResponse, $nextProcessingEntity);
             return;
         }
         else { // Done processing! Send off to SP
             $response['_Destination']          = $_SESSION['Processing'][$response['_ID']]['OriginalDestination'];
             $response['__']['ProtocolBinding'] = $_SESSION['Processing'][$response['_ID']]['OriginalBinding'];
-
-            $receivedRequest = $this->_server->getReceivedRequestFromResponse($response['_InResponseTo']);
 
             $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
