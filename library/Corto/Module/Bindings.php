@@ -104,6 +104,10 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     {
         $response = $this->_receiveMessage(self::KEY_RESPONSE);
         $this->_server->getSessionLog()->debug("Received response: " . var_export($response, true));
+        if (isset($response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Binding']) &&
+            $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Binding'] === "INTERNAL") {
+            return $response;
+        }
 
         $this->_decryptResponse($response);
         $this->_verifyResponse($response);
@@ -152,7 +156,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             return false;
         }
         
-        return $_REQUEST[$key];
+        $message = $_REQUEST[$key];
+        $message[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Binding'] = "INTERNAL";
+        return $message;        
     }
 
     /**
@@ -497,14 +503,18 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $messageIssuer = $message['saml:Issuer']['__v'];
         $publicKey = $this->_getRemoteEntityPublicKey($messageIssuer);
 
+        if (isset($message['ds:Signature'])) {
         $messageVerified = $this->_verifySignatureXMLElement(
             $publicKey,
             $message['__']['Raw'],
             $message
         );
-
+            if (!$messageVerified) {
+                throw new Corto_Module_Bindings_VerificationException("Invalid signature on message");
+            }
+        }
         if (!isset($message['saml:Assertion'])) {
-            return $messageVerified;
+            return true;
         }
 
         $assertionVerified = $this->_verifySignatureXMLElement(
@@ -512,7 +522,12 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             $message['__']['Raw'],
             $message['saml:Assertion']
         );
-        return ($messageVerified || $assertionVerified);
+
+        if (!$assertionVerified) {
+            throw new Corto_Module_Bindings_VerificationException("Invalid signature on assertion");
+        }
+
+        return true;
     }
 
     protected function _verifySignatureMessage($message, $key)
@@ -535,7 +550,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         );
         
         if (!$verified) {
-            throw new Corto_Module_Bindings_VerificationException("Invalid signature");
+            throw new Corto_Module_Bindings_VerificationException("Invalid signature for message");
         }
 
         return ($verified === 1);
