@@ -139,7 +139,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
         if ($cachedResponse['type'] === self::RESPONSE_CACHE_TYPE_OUT) {
             $this->_server->getSessionLog()->debug("SSO: Cached response found for SP");
-            $response = $this->_server->createEnhancedResponse($request, $cachedResponse);
+            $response = $this->_server->createEnhancedResponse($request, $cachedResponse['response']);
             $this->_server->sendResponseToRequestIssuer($request, $response);
         }
         else {
@@ -152,7 +152,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         return true;
     }
 
-    protected function _pickCachedResponse(array $cachedResponses, $request, $requestIssuerEntityId)
+    protected function _pickCachedResponse(array $cachedResponses, array $request, $requestIssuerEntityId)
     {
         // Then we look for OUT responses for this sp
         foreach ($cachedResponses as $cachedResponse) {
@@ -168,7 +168,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // Then we look for IN responses for this sp
-        $idpEntityIds = $idpEntityIds = $this->_server->getIdpEntityIds();
+        $idpEntityIds = $this->_server->getIdpEntityIds();
         foreach ($cachedResponses as $cachedResponse) {
             if ($cachedResponse['type'] !== self::RESPONSE_CACHE_TYPE_IN) {
                 continue;
