@@ -499,12 +499,20 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         // Otherwise it's in the message or in the assertion in the message (HTTP Post Response)
         $messageIssuer = $message['saml:Issuer']['__v'];
         $publicKey = $this->_getRemoteEntityPublicKey($messageIssuer);
+        $publicKeyFallback = $this->_getRemoteEntityFallbackPublicKey($messageIssuer);
 
         $messageVerified = $this->_verifySignatureXMLElement(
             $publicKey,
             $message['__']['Raw'],
             $message
         );
+        if (!$messageVerified && $publicKeyFallback) {
+            $messageVerified = $this->_verifySignatureXMLElement(
+                $publicKeyFallback,
+                $message['__']['Raw'],
+                $message
+            );
+        }
 
         if (!isset($message['saml:Assertion'])) {
             return $messageVerified;
@@ -515,6 +523,13 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             $message['__']['Raw'],
             $message['saml:Assertion']
         );
+        if (!$assertionVerified && $publicKeyFallback) {
+            $assertionVerified = $this->_verifySignatureXMLElement(
+                $publicKeyFallback,
+                $message['__']['Raw'],
+                $message['saml:Assertion']
+            );
+        }
         return ($messageVerified || $assertionVerified);
     }
 
@@ -529,13 +544,21 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $queryString .= '&SigAlg=' . $rawGet['SigAlg'];
 
         $messageIssuer = $message['saml:Issuer']['__v'];
-        $publicKey = $this->_getRemoteEntityPublicKey($messageIssuer);
+        $publicKey          = $this->_getRemoteEntityPublicKey($messageIssuer);
+        $publicKeyFallback  = $this->_getRemoteEntityFallbackPublicKey($messageIssuer);
 
         $verified = openssl_verify(
             $queryString,
             base64_decode($message['Signature']),
             $publicKey
         );
+        if (!$verified && $publicKeyFallback) {
+            $verified = openssl_verify(
+                $queryString,
+                base64_decode($message['Signature']),
+                $publicKey
+            );
+        }
         
         if (!$verified) {
             throw new Corto_Module_Bindings_VerificationException("Invalid signature");
@@ -755,7 +778,36 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
         $publicKey = openssl_pkey_get_public($remoteEntity['certificates']['public']);
         if ($publicKey === false) {
-            throw new Corto_Module_Bindings_Exception("Public key for $entityId is NOT a valid PEM SSL public key?!?! Value: " . $remoteEntity['certificates']['public']);
+            throw new Corto_Module_Bindings_Exception(
+                "Public key for $entityId is NOT a valid PEM SSL public key?!?! Value: " .
+                $remoteEntity['certificates']['public']
+            );
+        }
+
+        return $publicKey;
+    }
+
+    /**
+     * Get a fallback public key, if one is known.
+     *
+     * @throws Corto_Module_Bindings_Exception
+     * @param $entityId
+     * @return bool|resource
+     */
+    protected function _getRemoteEntityFallbackPublicKey($entityId)
+    {
+        $remoteEntity = $this->_server->getRemoteEntity($entityId);
+
+        if (!isset($remoteEntity['certificates']['public-fallback'])) {
+            return false;
+        }
+
+        $publicKey = openssl_pkey_get_public($remoteEntity['certificates']['public-fallback']);
+        if ($publicKey === false) {
+            throw new Corto_Module_Bindings_Exception(
+                "Public key for $entityId is NOT a valid PEM SSL public key?!?! Value: " .
+                $remoteEntity['certificates']['public']
+            );
         }
 
         return $publicKey;
