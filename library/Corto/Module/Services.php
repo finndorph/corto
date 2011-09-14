@@ -268,6 +268,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
             // TEMPORARY HACK to fix processing
             unset($receivedRequest['__']['voContext']);
+       	    unset($receivedRequest['__']['Transparent']);
             $this->_server->setVirtualOrganisationContext(null);
 
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
@@ -430,6 +431,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
 
             // TEMPORARY HACK to fix processing
             unset($receivedRequest['__']['voContext']);
+       	    unset($receivedRequest['__']['Transparent']);
             $this->_server->setVirtualOrganisationContext(null);
 
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
