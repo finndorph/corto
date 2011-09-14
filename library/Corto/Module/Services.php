@@ -270,11 +270,14 @@ class Corto_Module_Services extends Corto_Module_Abstract
             unset($receivedRequest['__']['voContext']);
             $this->_server->setVirtualOrganisationContext(null);
 
+            $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
+
             // Change the destiny of the received response
             $newResponse['_InResponseTo']          = $receivedResponse['_InResponseTo'];
             $newResponse['_Destination']           = $firstProcessingEntity['Location'];
             $newResponse['__']['ProtocolBinding']  = $firstProcessingEntity['Binding'];
             $newResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $newResponse['__']['paramname']        = 'SAMLResponse';
 
             $responseAssertionAttributes = &$newResponse['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
@@ -355,7 +358,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
             );
             return;
         }
-
         $html = $this->_server->renderTemplate(
                 'consent',
                 array(
@@ -437,6 +439,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $newResponse['_Destination']           = $nextProcessingEntity['Location'];
             $newResponse['__']['ProtocolBinding']  = $nextProcessingEntity['Binding'];
             $newResponse['__']['Return']           = $this->_server->getCurrentEntityUrl('processedAssertionConsumerService');
+            $newResponse['__']['paramname']        = 'SAMLResponse';
 
             $this->_server->getBindingsModule()->send($newResponse, $nextProcessingEntity);
             return;
