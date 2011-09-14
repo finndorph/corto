@@ -266,7 +266,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalDestination'] = $receivedResponse['_Destination'];
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding']     = $receivedResponse['__']['ProtocolBinding'];
 
-            $oldVoContext = $this->_voContext;
+            $oldVoContext = $this->_server->_voContext;
             $this->_voContext = null;
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
             $this->_voContext = $oldVoContext;

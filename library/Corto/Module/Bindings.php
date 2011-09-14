@@ -337,8 +337,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     protected function _verifyRequest(array &$request)
     {
         $remoteEntity = $this->_verifyKnownIssuer($request);
-        
-        if ((isset($remoteEntity['AuthnRequestsSigned']) && $remoteEntity['AuthnRequestsSigned']) ||
+        if ((isset($remoteEntity['WantsAuthnRequestsSigned']) && $remoteEntity['WantsAuthnRequestsSigned']) ||
             ($this->_server->getCurrentEntitySetting('WantsAuthnRequestsSigned', false))) {
             $this->_verifySignature($request, self::KEY_REQUEST);
             $request['__']['WasSigned'] = true;
