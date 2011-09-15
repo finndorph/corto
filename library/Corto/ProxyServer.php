@@ -4,50 +4,69 @@
  *
  */
 require 'XmlToArray.php';
-require '../library/Corto/cortolib.php';
+require 'Log/Dummy.php';
 
-class Corto_ProxyServer_Exception extends Exception {
+class Corto_ProxyServer_Exception extends Exception
+{
 }
 
-/**
- * ProxyServer is the main controller in Corto. It coordinates receiving
- * and servicing SAML messages using the injected bindings and services
- * modules.
- *
- * @throws Corto_ProxyServer_Exception
- *
- */
+class Corto_ProxyServer
+{
+    const ID_PREFIX = 'CORTO';
 
-class Corto_ProxyServer {
-    const MODULE_BINDINGS = 'Bindings';
-    const MODULE_SERVICES = 'Services';
+    const MODULE_BINDINGS   = 'Bindings';
+    const MODULE_SERVICES   = 'Services';
 
     const TEMPLATE_SOURCE_FILESYSTEM = 'filesystem';
-    const TEMPLATE_SOURCE_MEMORY = 'memory';
+    const TEMPLATE_SOURCE_MEMORY     = 'memory';
 
-    const MESSAGE_TYPE_REQUEST = 'SAMLRequest';
+    const MESSAGE_TYPE_REQUEST  = 'SAMLRequest';
     const MESSAGE_TYPE_RESPONSE = 'SAMLResponse';
 
+    protected $_requestArray;
+    protected $_responseArray;
+
     protected $_server;
-    protected $_metadatapath;
-    protected $_cortoinstance;
-    protected $_hosted;
-    protected $_cohosted;
     protected $_systemLog;
     protected $_sessionLog;
     protected $_sessionLogDefault;
 
-    protected $_metadata = array();
+    protected $_hostedPath = "/";
 
+    protected $_configs;
+    protected $_entities = array(
+        'current'=>array(),
+        'hosted'=>array(),
+        'remote'=>array(),
+    );
+    protected $_attributes = array();
     protected $_modules = array();
-    protected $_templatePath;
+    protected $_templateSource;
+    protected $_processingMode = false;
 
     public function __construct()
     {
         $this->_server = $this;
     }
 
-    //////// GETTERS / SETTERS /////////
+//////// GETTERS / SETTERS /////////
+
+    public function setProcessingMode()
+    {
+        $this->_processingMode = true;
+        return $this;
+    }
+
+    public function unsetProcessingMode()
+    {
+        $this->_processingMode = false;
+        return $this;
+    }
+
+    public function isInProcessingMode()
+    {
+        return $this->_processingMode;
+    }
 
     /**
      * @return Corto_Module_Bindings
@@ -103,243 +122,264 @@ class Corto_ProxyServer {
         return $this;
     }
 
-    public function getCurrentMD($f1, $f2 = null, $f3 = null, $default = null)
+    public function getConfig($name, $default = null)
     {
-        return $this->_getMD($this->_metadata['current'], $f1, $f2, $f3, $default);
-    }
-
-    public function getRemoteMD($id, $f1, $f2 = null, $f3 = null, $default = null)
-    {
-        return $this->_getMD($this->_metadata['md'][$id], $f1, $f2, $f3, $default);
-    }
-
-    private function _getMD($md, $f1, $f2, $f3, $default = null)
-    {
-        if ($f3) {
-            $res = nvl3($md, $f1, $f2, $f3);
-        } elseif ($f2) {
-            $res = nvl2($md, $f1, $f2);
-        } else {
-            $res = nvl($md, $f1);
+        if (isset($this->_configs[$name])) {
+            return $this->_configs[$name];
         }
-        if (!$res) {
-            if ($default !== null) {
-                return $default;
-            } else {
-                throw new Corto_ProxyServer_Exception("Needed metadata not found: $f1/$f2/$f3 for entity: " . $md['entityID']);
-            }
-        }
-        return $res;
-
+        return $default;
     }
 
-    public function getPublicMetadata($entityID)
+    public function getConfigs()
     {
-        $publicmetadata = require $this->_metadatapath . $this->_cortoinstance . '.public.metadata.php';
-        $publicmetadata = $this->rehost($publicmetadata, $this->_hosted, $this->_cohosted);
-        return nvl($publicmetadata, $entityID);
+        return $this->_configs;
     }
 
+    public function setConfigs($configs)
+    {
+        $this->_configs = $configs;
+        return $this;
+    }
+
+    public function setAttributeMetadata(array $attributes)
+    {
+        $this->_attributes = $attributes;
+        return $this;
+    }
+
+    public function getAttributeName($uid, $ietfLanguageTag = 'en_US')
+    {
+        $name = $this->_getAttributeDataType('Name', $uid, $ietfLanguageTag);
+        if (!$name) {
+            $name = $uid;
+        }
+        return $name;
+    }
+
+    public function getAttributeDescription($uid, $ietfLanguageTag = 'en_US')
+    {
+        $description = $this->_getAttributeDataType('Description', $uid, $ietfLanguageTag);
+        if (!$description) {
+            $description = '';
+        }
+        return $description;
+    }
+
+    protected function _getAttributeDataType($type, $name, $ietfLanguageTag = 'en_US')
+    {
+        if (isset($this->_attributes[$name][$type][$ietfLanguageTag])) {
+            return $this->_attributes[$name][$type][$ietfLanguageTag];
+        }
+        // @todo warn the system! requested a unkown UID or langauge...
+        return $name;
+    }
+
+    public function getCurrentEntity()
+    {
+        return $this->_entities['current'];
+    }
+
+    public function setHostedEntities($entities)
+    {
+        $this->_entities['hosted'] = $entities;
+    }
+
+    public function setHostedPath($path)
+    {
+        $this->_hostedPath = $path;
+    }
+
+    public function getHostedEntities()
+    {
+        return $this->_entities['hosted'];
+    }
+
+    public function getHostedEntity($entityId)
+    {
+        if (isset($this->_entities['hosted'][$entityId])) {
+            return $entityId;
+        }
+        return false;
+    }
+
+    public function getCurrentEntityUrl($serviceName = "", $remoteEntityId = "", $request = "")
+    {
+        return $this->getHostedEntityUrl(
+            $this->_entities['current']['EntityCode'],
+            $serviceName,
+            $remoteEntityId,
+            $request
+        );
+    }
+
+    public function getCurrentEntitySetting($name, $default = null)
+    {
+        if (isset($this->_entities['current'][$name])) {
+            return $this->_entities['current'][$name];
+        }
+        return $default;
+    }
+    
     public function selfUrl($entityid = null)
-    {
-        return 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $this->selfPath($entityid);
+    { 
+        return  'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $this->selfPath($entityid);
     }
 
-    public function selfPath($entityid = null)
-    {
-        return $_SERVER['SCRIPT_NAME'] . ($entityid ? '/' . $entityid : '');
-    }
+	public function selfPath($entityid = null)
+	{
+		return $_SERVER['SCRIPT_NAME'] . ($entityid ? '/' . $entityid : '');
+	}
 
-    public function selfDestination()
+	public function selfDestination() {
+		return self::selfUrl() . $_SERVER['PATH_INFO'];
+	}
+	
+    public function getHostedEntityUrl($entityCode, $serviceName = "", $remoteEntityId = "")
     {
-        return self::selfUrl() . $_SERVER['PATH_INFO'];
+        $entityPart = $entityCode;
+        if ($remoteEntityId) {
+            $entityPart .= '_' . md5($remoteEntityId);
+        }
+        return 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
+            . $_SERVER['SCRIPT_NAME'] . '/' . $entityPart  . ($serviceName ? '/': '') . $serviceName;
     }
 
     public function getRemoteEntity($entityId)
     {
-        return nvl($this->_metadata['md'], $entityId);
+        if (!isset($this->_entities['remote'][$entityId])) {
+            throw new Corto_ProxyServer_Exception("Unknown remote entity '$entityId'");
+        }
+        $entity = $this->_entities['remote'][$entityId];
+        $entity['EntityId'] = $entityId;
+        return $entity;
     }
 
     public function getRemoteEntities()
     {
-        return array_intersect($this->_metadata['md'], array($this->_metadata['current']));
+        return array_intersect($this->_entities['remote'], array($this->_entities['current']));
     }
 
-    public function getPresetIDPs()
+    public function getIdpEntityIds()
     {
-        return nvl3($this->_metadata, 'current', 'IDP', 'corto:IDPList', array());
-    }
-
-    public function getAllowedIDPs($sso = false)
-    {
-        $res = array();
-
-        $metadata = $this->_metadata['md'];
-
-        foreach ($metadata as $id => $entity) {
-            if (isset($entity['IDP']['SingleSignOnService'])) {
-                if ($entity['entityID'] == nvl2($this->_metadata, 'current', 'entityID')) continue;
-                $res[] = $entity['entityID'];
+        $idps = array();
+        foreach ($this->_server->getRemoteEntities() as $remoteEntityId => $remoteEntity) {
+            if (isset($remoteEntity['SingleSignOnService'])) {
+                $idps[] = $remoteEntityId;
             }
         }
-        if ($allowedIDPs = nvl3($this->_metadata, 'current', 'SP', 'corto:allowedIDPs')) {
-            $res = array_intersect($res, $allowedIDPs);
-        }
-        if ($deniedIDPs = nvl3($this->_metadata, 'current', 'SP', 'corto:deniedIDPs')) {
-            $res = array_diff($res, $deniedIDPs);
-        }
-
-        if ($sso) {
-            foreach ($res as $entityid) {
-                $ssoservices[] = $metadata[$entityid]['IDP']['SingleSignOnService'][0]['Location'];
-            }
-            return $ssoservices;
-        }
-        return $res;
+        return $idps;
     }
 
-
-    public function setMetadata($metadatapath, $cortoinstance, $rehost = false)
+    public function setRemoteEntities($entities)
     {
-        /**
-         * This is to allow the default metadata to be independent of the location of corto
-         * Replaces _HOSTED_ with the actual location
-         */
-        $this->_cortoinstance = $cortoinstance;
-        $this->_metadatapath = $metadatapath;
-        $this->_hosted = $hosted = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
-        $this->_cohosted = $cohosted = join("/", array_slice(explode("/", $hosted), 0, -1));
-        $this->_metadata = require $metadatapath . $cortoinstance . '.optimized.metadata.php';
-        if ($rehost) {
-            $this->_metadata = $this->rehost($this->_metadata, $hosted, $cohosted);
-        }
-        $this->_metadata['lookuptable'][$hosted . "/_VVPMCIP_"] = array(
-            'Service' => '_VVPMCIP_',
+        $this->_entities['remote'] = $entities;
+    }
+
+    public function setTemplateSource($type, $arguments)
+    {
+        $this->_templateSource = array(
+            'type'      => $type,
+            'arguments' => $arguments,
         );
-    }
-
-    public function setTemplatePath($path)
-    {
-        $this->_templatePath = $path;
         return $this;
     }
 
-    private function rehost($md, $host, $cohost)
+    public function getTemplateSource()
     {
-        foreach ($md as $k => $v) {
-            $k = str_replace('_HOSTED_', $host, $k);
-            $k = str_replace('_COHOSTED_', $cohost, $k);
-            if (is_array($v)) {
-                $hosted[$k] = self::rehost($v, $host, $cohost);
-            } else {
-                $v = str_replace('_HOSTED_', $host, $v);
-                $v = str_replace('_COHOSTED_', $cohost, $v);
-                $hosted[$k] = $v;
-            }
-        }
-        return $hosted;
+        return $this->_templateSource;
     }
 
-    //////// MAIN /////////
-    /**
-     * Main method for handling all requests to the ProxyServer
-     *
-     * @param  $uri
-     * @return void
-     */
-    public function serveRequest($uri = null)
+//////// MAIN /////////
+
+    public function serveRequest($uri)
     {
-        /*
-           * non null $uri is used for the INTERNAL binding
-           */
-        if (!$uri) {
-            $uri = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST']
-                    . $_SERVER['PHP_SELF'];
-        }
-        $parameters = $this->getParametersFromUrl($uri);
-        $this->setCurrentEntity($parameters['EntityID']);
+        $parameters = $this->_getParametersFromUri($uri);
+        $this->setCurrentEntity($parameters['EntityCode'], $parameters['RemoteIdPMd5']);
 
         $this->startSession();
-        $this->getSessionLog()->debug("Started request with $uri, resulting in parameters: " . var_export($parameters, true));
-        $serviceName = $parameters['Service'];
+        $this->getSessionLog()->debug("Started request with $uri, resulting in parameters: ". var_export($parameters, true));
+
+        $serviceName = $parameters['ServiceName'];
         $this->getSessionLog()->debug("Calling service '$serviceName'");
-        $this->getServicesModule()->$serviceName($parameters);
+        $this->getServicesModule()->$serviceName();
         $this->getSessionLog()->debug("Done calling service '$serviceName'");
     }
 
-    /**
-     * Search through the federations and lookup the parameters for the targeted entity
-     *
-     * @param  $uri the full service uri
-     * @return array with EntityID, Service and Binding
-     */
-    public function getParametersFromUrl($uri)
+    protected function _getParametersFromUri($uri)
     {
-        #print_r($this->_metadata);
-        $remote = nvl($this->_metadata['lookuptable'], $uri);
+        $parameters = array(
+            'EntityCode'    => '',
+            'ServiceName'   => '',
+            'RemoteIdPMd5'  => '',
+        );
 
-        if (!isset($remote)) {
-            throw new Corto_ProxyServer_Exception("No entity found for url: $uri");
+        if ($uri) {
+            // From /hostedEntity/requestedService get the hosted entity code and the requested service
+            $entityCodeAndService = preg_split('/\//', $uri, 0, PREG_SPLIT_NO_EMPTY);
+            if (isset($entityCodeAndService[0])) {
+                // From the hosted entity name like entity name_myidp, get a hosted IDP identifier (myIdp in the example).
+                $entityComponents = preg_split('/_/', $entityCodeAndService[0], 0, PREG_SPLIT_NO_EMPTY);
+
+                $parameters['EntityCode'] = $entityComponents[0];
+                if (isset($entityComponents[1])) {
+                    $parameters['RemoteIdPMd5'] = $entityComponents[1];
+                }
+            }
+            if (isset($entityCodeAndService[1])) {
+                $parameters['ServiceName'] = $entityCodeAndService[1];
+            }
         }
 
-        if (is_array($remote) && $remote['Service'] == '_VVPMCIP_') {
-            $remote['EntityID'] = $_POST['cortoentityid'];
-            $remote['Service'] = $_POST['cortoservice'];
-        } elseif (is_array($remote)) {
-        } else {
-            $remote = array(
-                'EntityID' => $uri,
-                'Service' => 'metadataservice',
-                #'Binding' => 'URI' - not used - always URI don't bother using bindings
-            );
+        // Defaults
+        if (!$parameters['EntityCode']) {
+            $parameters['EntityCode'] = 'main';
         }
-        return $remote;
+        if (!$parameters['ServiceName']) {
+            $parameters['ServiceName'] = 'demoApp';
+        }
+
+        return $parameters;
     }
 
-    /**
-     * Set the current metadata
-     * remote is the known remote entities
-     * current is the metadata for the current entity
-     *
-     * @param  $entityID
-     * @param  $federation if null stay in the current federation
-     */
-    public function setCurrentEntity($entityID)
+    public function setCurrentEntity($entityCode, $remoteIdPMd5 = "")
     {
-        $this->_metadata['current'] = $this->_metadata['md'][$entityID];
+        $entityId = $this->getHostedEntityUrl($entityCode);
+        $hostedEntity = array();
+        if (isset($this->_entities['hosted'][$entityId])) {
+            $hostedEntity = $this->_entities['hosted'][$entityId];
+        }
+
+        $hostedEntity['EntityId']   = $entityId;
+        $hostedEntity['EntityCode'] = $entityCode;
+
+        if ($remoteIdPMd5) {
+            $remoteEntityIds = array_keys($this->_entities['remote']);
+            foreach ($remoteEntityIds as $remoteEntityId) {
+                if (md5($remoteEntityId) === $remoteIdPMd5) {
+                    $hostedEntity['Idp'] = $remoteEntityId;
+                    $hostedEntity['TransparentProxy'] = true;
+                    $this->getSessionLog()->debug("Detected pre-selection of $remoteEntityId as IdP, switching to transparant mode");
+                    break;
+                }
+            }
+            if (!isset($hostedEntity['Idp'])) {
+                $this->getSessionLog()->warn("Unable to map $remoteIdPMd5 to a remote entity!");
+            }
+        }
+
+        $this->_entities['current'] = $hostedEntity;
+        return $this;
     }
 
-    ////////  REQUEST HANDLING /////////
+////////  REQUEST HANDLING /////////
 
-    /**
-     * Send a (proxied) authenticationrequest, optionally use the corto:ProxySP as the
-     * issuer. Store both the original request and the new in the session. Let the new
-     * point to the old
-     *
-     * @param  $request
-     * @param  $idp
-     * @param  $scope
-     * @return void
-     */
-    public function sendAuthenticationRequest(array $request, $idp, $scope = null)
+    public function sendAuthenticationRequest(array $request, $idpEntityId, $scope = null)
     {
+        $this->setCookie('selectedIdp', $idpEntityId);
+
         $originalId = $request['_ID'];
 
-        $proxySP = $this->_server->getCurrentMD('IDP', 'corto:proxySP', 0, false);
-
-        if (!$proxySP) {
-            $issuer = $request['saml:Issuer']['__v'];
-            $proxySP = $this->_server->getRemoteMD($issuer, 'SP', 'corto:proxySP', 0, false);
-        }
-
-        if ($proxySP) {
-            $request['__']['ProxyIDP'] = $this->_server->getCurrentMD('entityID');
-            $this->_metadata['current'] = $this->_metadata['md'][$proxySP[0]];
-            $this->startSession();
-        }
-
-        $newRequest = $this->createEnhancedRequest($request, $idp, $scope);
-
+        $newRequest = $this->createEnhancedRequest($request, $idpEntityId, $scope);
         $newId = $newRequest['_ID'];
 
         // Store the original Request
@@ -347,10 +387,10 @@ class Corto_ProxyServer {
 
         // Store the mapping from the new request ID to the original request ID
         $_SESSION[$newId] = array();
-        #$_SESSION[$newId]['SAMLRequest'] = $request;
+        $_SESSION[$newId]['SAMLRequest'] = $request;
         $_SESSION[$newId]['_InResponseTo'] = $originalId;
 
-        $this->getBindingsModule()->send($newRequest, $idp);
+        $this->getBindingsModule()->send($newRequest, $this->getRemoteEntity($idpEntityId));
     }
 
     /**
@@ -362,51 +402,52 @@ class Corto_ProxyServer {
      */
     public function createEnhancedRequest($originalRequest, $idp, array $scoping = null)
     {
-        $remoteMetaData = $this->_metadata['md'][$idp];
-        $ourMetaData = $this->_metadata['current'];
-        $defaultacs = $ourMetaData['SP']['AssertionConsumerService']['default'];
-
+        $remoteMetaData = $this->getRemoteEntity($idp);
         $request = array(
-            Corto_XmlToArray::TAG_NAME_KEY => 'samlp:AuthnRequest',
-            '__' => array(
-                'paramname' => 'SAMLRequest',
-                'destinationid' => $idp,
-                'ProtocolBinding' => $remoteMetaData['IDP']['SingleSignOnService'][0]['Binding'],
+            Corto_XmlToArray::TAG_NAME_KEY       => 'samlp:AuthnRequest',
+            Corto_XmlToArray::PRIVATE_KEY_PREFIX => array(
+                'paramname'         => 'SAMLRequest',
+                'destinationid'     => $idp,
+                'ProtocolBinding'   => $remoteMetaData['SingleSignOnService']['Binding'],
             ),
-            '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
-            '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
+            '_xmlns:saml'                       => 'urn:oasis:names:tc:SAML:2.0:assertion',
+            '_xmlns:samlp'                      => 'urn:oasis:names:tc:SAML:2.0:protocol',
 
-            '_ID' => $this->getNewId(),
-            '_Version' => '2.0',
-            '_IssueInstant' => $this->timeStamp(),
-            '_Destination' => $remoteMetaData['IDP']['SingleSignOnService'][0]['Location'],
-            '_ForceAuthn' => ($originalRequest['_ForceAuthn']) ? 'true' : 'false',
-            '_IsPassive' => ($originalRequest['_IsPassive']) ? 'true' : 'false',
+            '_ID'                               => $this->getNewId(),
+            '_Version'                          => '2.0',
+            '_IssueInstant'                     => $this->timeStamp(),
+            '_Destination'                      => $remoteMetaData['SingleSignOnService']['Location'],
+            '_ForceAuthn'                       => ($originalRequest['_ForceAuthn']) ? 'true' : 'false',
+            '_IsPassive'                        => ($originalRequest['_IsPassive']) ? 'true' : 'false',
 
-            // Send the response to us. We always use ACSURL as per sam2int.org
-            '_AssertionConsumerServiceURL' => $ourMetaData['SP']['AssertionConsumerService'][$defaultacs]['Location'],
-            '_ProtocolBinding' => $ourMetaData['SP']['AssertionConsumerService'][$defaultacs]['Binding'],
+            // Send the response to us.
+            '_AssertionConsumerServiceURL'      => $this->getCurrentEntityUrl('assertionConsumerService'),
+            '_ProtocolBinding'                  => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
 
-            '_AttributeConsumingServiceIndex' => nvl($originalRequest, '_AttributeConsumingServiceIndex'),
-            'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
+            '_AttributeConsumingServiceIndex'   => $originalRequest['_AttributeConsumingServiceIndex'],
+
+            'saml:Issuer' => array('__v' => $this->getCurrentEntityUrl('sPMetadataService')),
+            'ds:Signature' => '__placeholder__',
             'samlp:NameIDPolicy' => array(
                 '_Format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
                 '_AllowCreate' => 'true',
             ),
         );
 
+        if ($scoping) {
+            $scoping = (array) $scoping;
+            foreach ($scoping as $scopedIdP) {
+                $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'][] = array('_ProviderID' => $scoping);
+            }
+            return $request;
+        }
+
         // Copy original scoping rules
         if (isset($originalRequest['samlp:Scoping'])) {
             $request['samlp:Scoping'] = $originalRequest['samlp:Scoping'];
-        } else {
-            $request['samlp:Scoping'] = array();
         }
-
-        if ($scoping) {
-            foreach ((array) $scoping as $scopedIdP) {
-                $request['samlp:Scoping']['samlp:IDPList']['samlp:IDPEntry'][] = array('_ProviderID' => $scopedIdP);
-            }
-            #return $request;
+        else {
+            $request['samlp:Scoping'] = array();
         }
 
         // Decrease or initialize the proxycount
@@ -414,7 +455,7 @@ class Corto_ProxyServer {
             $request['samlp:Scoping']['_ProxyCount']--;
         }
         else {
-            $request['samlp:Scoping']['_ProxyCount'] = $this->getCurrentMD('max_proxies', null, null, 10);
+            $request['samlp:Scoping']['_ProxyCount'] = $this->getConfig('max_proxies', 10);
         }
 
         // Add the issuer of the original request as requester
@@ -423,281 +464,10 @@ class Corto_ProxyServer {
         }
         $request['samlp:Scoping']['samlp:RequesterID'][] = array('__v' => $originalRequest['saml:Issuer']['__v']);
 
-        // Add the idp as requester - if we are sending the req as another entity than the one who received it
-        if ($proxyidp = nvl($originalRequest['__'], 'ProxyIDP')) {
-            $request['samlp:Scoping']['samlp:RequesterID'][] = array('__v' => $proxyidp);
-        }
-
         return $request;
     }
 
-    /**
-     * Single Logout handling
-     */
-
-    /**
-     *
-     * Saves the info needed for later SLO:
-     * - Issuer of incoming response or receipient of out going response
-     * - Subject
-     * - Time when no longer valid @@todo notonorafter - for slo info
-     *
-     * SLO can be initiated from a back-end request so we need to be able
-     * to get to the subjects incoming and outgoing responses using only
-     * subject and entityid
-     *
-     * @param array $message
-     */
-
-    public function saveSloInfo(array $message)
-    {
-        $issuer = $message['saml:Issuer']['__v'];
-        $me = $this->getCurrentMD('entityID');
-        if ($issuer == $me) { // outgoing response
-            $type = 'SP';
-            $entity = $message['__']['destinationid'];
-        } else { // incoming response
-            $type = 'IDP';
-            $entity = $issuer;
-        }
-        if (!nvl2($this->getRemoteEntity($entity), 'SP', 'saveSLOInfo')) {
-            return;
-        }
-        ;
-        // @todo support SessionIndex and SubjectConfirmation, EncryptedID
-        $id = nvl3($message, 'saml:Assertion', 'saml:Subject', 'saml:NameID');
-        if (!$id) {
-            throw new Corto_ProxyServer_Exception("No NameID in message (EncryptedID not supported yet!)");
-        }
-        $sessionnotonorafter = nvl3($message, 'saml:Assertion', 'saml:AuthnStatement', '_SessionNotOnOrAfter');
-        $sessionindex = session_id();
-        $key = 'ID-' . sha1($me . serialize($id));
-        if ($notonorafter = db_del($key, 'notonorafter')) {
-            if ($notonorafter > timeStamp()) {
-                db_put($key, $notonorafter, 'notonorafter'); // be prepared for yet another one ...
-                throw new Corto_ProxyServer_Exception("A very rare, but yet unsupported situation has happened:
-                An sssertion was received while an earlier LogoutRequest was still active: notonorafter = $notonorafter");
-            }
-        }
-        db_add($key, $sessionindex, 'session');
-        $info = array(
-            'entity' => $entity,
-            'nameID' => $id,
-            'nameIDType' => 'saml:NameID',
-            'sessionnotonorafter' => $sessionnotonorafter,
-            'session' => $sessionindex,
-        );
-        db_put($type . '-' . $sessionindex, $info, sha1($entity));
-    }
-
-    /**
-     * Initialises the SLO information based on an incoming SLO request.
-     * Starts the SLO process by calling handleslo with a fake request.
-     *
-     * @throws Corto_ProxyServer_Exception
-     * @param  array $message - a SLO request
-     * @return void
-     *
-     */
-
-    public function sloinit($message)
-    {
-        $id = nvl($message, 'saml:NameID');
-        if (!$id) {
-            throw new Corto_ProxyServer_Exception("No NameID in message (EncryptedID not supported yet!)");
-        }
-        $key = 'ID-' . sha1($this->getCurrentMD('entityID') . serialize($id));
-        if ($notonorafter = nvl($message, '_NotOnOrAfter')) {
-            db_put($key, $notonorafter, 'NotOnOrAfter');
-        }
-        $sessions = db_del($key, 'session');
-        $msgid = $message['_ID'];
-        $sloinfo = array(
-            'sessions' => $sessions,
-            'ID' => $msgid,
-            'Issuer' => $message['saml:Issuer']['__v'],
-            'Binding' => $message['__']['Binding'],
-            'NotOnOrAfter' => $notonorafter,
-            'success' => true,
-        );
-        db_put('SLO-' . $msgid, $sloinfo);
-        $fakemsgid = ID();
-        db_put('REQ-' . $fakemsgid, array('ID' => $msgid));
-        return $this->handleslo(array('_InResponseTo' => $fakemsgid));
-    }
-
-    /**
-     * Handles the reception of SLO responses and sending of new SLO requests.
-     * Deletes information for handled SLO request and finally deletes the session
-     * the original SLO request was sent to.
-     *
-     * @param  array $message
-     * @return void
-     *
-     *
-     */
-    public function handleslo(array $message)
-    {
-        $me = $this->getCurrentMD('entityID');
-        $inresponseto = $message['_InResponseTo'];
-        $req = db_get('REQ-' . $inresponseto);
-        if ($remote = nvl($req, 'entity')) {
-            db_del($req['type'] . '-' . $req['sessionindex'], sha1($remote));
-        }
-
-        $sloinfo = db_get('SLO-' . $req['ID']);
-        $success = 'urn:oasis:names:tc:SAML:2.0:status:Success';
-        if ($status = nvl2($message, 'samlp:Status', 'samlp:StatusCode')) {
-            if ($status['_Value'] != $success || nvl2($status, 'samlp:StatusCode', '_Value')) {
-                $sloinfo['success'] = false;
-                db_put('SLO-' . $req['request '], $sloinfo);
-            }
-        }
-        foreach ((array) nvl($sloinfo, 'sessions') as $session => $dummy) {
-            foreach (array('IDP', 'SP') as $type) {
-                $responses = db_get($type . '-' . $session, '*');
-                foreach ($responses as $hashedentity => $info) {
-                    if ($info['entity'] == $sloinfo['Issuer']) {
-                        db_del($type . '-' . $session, $hashedentity);
-                        continue;
-                    }
-                    $id = ID();
-                    $info['ID'] = $id;
-                    $info['type'] = $type;
-                    debug("REQ id+", $id);
-                    db_put("REQ-$id", serialize($info));
-                    $response = $this->sendLogoutRequest($info);
-                    if (!$response) {
-                        $res = false;
-                    } else {
-                        $status = $response['samlp:Status']['samlp:StatusCode'];
-                        $res = $status['_Value'] != $success || nvl2($status, 'samlp:StatusCode', '_Value');
-                    }
-                    if (!$res && $sloinfo['success']) {
-                        $sloinfo['success'] = false;
-                        db_put('SLO-' . $req['ID'], serialize($sloinfo));
-                    }
-                }
-                ;
-                db_del('REQ-' . $inresponseto);
-            }
-            delete_corto_session($session);
-        }
-        db_del('SLO-' . $req['ID']);
-        $this->sendLogoutResponse($sloinfo);
-    }
-
-
-    /**
-     * Sends a SLO request base on the info in the slorequest info - returns if the binding
-     * is SOAP.
-     *
-     * @param  array $slorequestinfo
-     * @return bool
-     *
-     */
-    public function sendLogoutRequest($slorequestinfo)
-    {
-        $type = $slorequestinfo['type'];
-        $entity = $slorequestinfo['entity'];
-        $sloEndpoints = nvl($this->_metadata['md'][$entity][$type], 'SingleLogoutService');
-        if (!$sloEndpoints) {
-            return false;
-        }
-
-        foreach ($sloEndpoints as $endpoint) {
-            $slobybinding[$endpoint['Binding']][] = $endpoint;
-        }
-
-        $bindings = array('SOAP', 'HTTP-Redirect', 'HTTP-POST', 'HTTP-Artifact');
-        foreach ($bindings as $binding) {
-            if ($endpoints = nvl($slobybinding, 'urn:oasis:names:tc:SAML:2.0:bindings:' . $binding)) {
-                break;
-            }
-        }
-        $endpoint = $endpoints[0];
-
-        $request = array(
-            '__t' => 'samlp:LogoutRequest',
-            '__' => array(
-                'destinationid' => $entity,
-                'ProtocolBinding' => $endpoint['Binding'],
-                'paramname' => 'SAMLRequest',
-            ),
-            '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
-            '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
-
-            '_ID' => $slorequestinfo['ID'],
-            '_Version' => '2.0',
-            '_IssueInstant' => $this->timeStamp(),
-            '_Destination' => $endpoint['Location'],
-            '_NotOnOrAfter' => timeStamp(5),
-            'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
-        );
-
-        $request[$slorequestinfo['nameIDType']] = $slorequestinfo['nameID'];
-        // only actually returns if soap call ...
-        $soapresponse = $this->getBindingsModule()->send($request, $entity);
-    }
-
-    /**
-     * Send a logoutresponse to the issuer of the original request
-     *
-     * @param  $request - the original request
-     * @param  $partial - true if not all slo request sent from this entity was successful
-     * @return void
-     */
-    public function sendLogoutResponse($sloinfo)
-    {
-        $remote = $this->_metadata['md'][$sloinfo['Issuer']];
-        if ($sloinfo['Binding'] == 'urn:oasis:names:tc:SAML:2.0:bindings:SOAP') {
-            $endpoint['Binding'] = $sloinfo['Binding'];
-        } else {
-            foreach (array('SP', 'IDP') as $type) {
-                $sloEndpoints = $remote[$type]['SingleLogoutService'];
-                foreach ($sloEndpoints as $endpoint) {
-                    $binding = $endpoint['Binding'] == $sloinfo['Binding'];
-                    if ($binding) {
-                        break 2;
-                    }
-                }
-            }
-            if (!$binding) {
-                $endpoint = reset($sloEndpoints);
-            }
-        }
-
-        $response = array(
-            '__t' => 'samlp:LogoutResponse',
-            '__' => array(
-                'destinationid' => $sloinfo['Issuer'],
-                'ProtocolBinding' => $endpoint['Binding'],
-                'paramname' => 'SAMLResponse',
-            ),
-            '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
-            '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
-
-            '_ID' => $this->getNewId(),
-            '_Version' => '2.0',
-            '_IssueInstant' => $this->timeStamp(),
-            '_Destination' => nvl($endpoint, 'Location'),
-            '_InResponseTo' => $sloinfo['ID'],
-            'samlp:Status' => array(
-                'samlp:StatusCode' => array(
-                    '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
-                ),
-            ),
-        );
-        if (!$sloinfo['success']) {
-            $response['samlp:Status']['samlp:StatusCode']['samlp:StatusCode'] = array(
-                '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:PartialLogout',
-            );
-        }
-        return $this->getBindingsModule()->respond($response, $remote);
-    }
-
-
-    //////// RESPONSE HANDLING ////////
+//////// RESPONSE HANDLING ////////
 
     public function createErrorResponse($request, $errorStatus)
     {
@@ -715,33 +485,42 @@ class Corto_ProxyServer {
         return $response;
     }
 
-    public function createEnhancedResponse($request, $sourceResponse, $proxySP = null)
+    public function createEnhancedResponse($request, $sourceResponse)
     {
         $response = $this->_createBaseResponse($request);
-        $response['samlp:Status'] = $sourceResponse['samlp:Status'];
+        $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['OriginalIssuer'] = $sourceResponse['saml:Assertion']['saml:Issuer']['__v'];
+        if (!$this->_server->isInProcessingMode() && isset($request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) &&
+            $request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) {
+            $response['saml:Issuer']['__v'] = $sourceResponse['saml:Issuer']['__v'];
+            $response['saml:Assertion']['saml:Issuer']['__v'] = $sourceResponse['saml:Assertion']['saml:Issuer']['__v'];
+        }
+
+        $response['samlp:Status']   = $sourceResponse['samlp:Status'];
         $response['saml:Assertion'] = $sourceResponse['saml:Assertion'];
-        unset($response['saml:Assertion']['ds:Signature']);
 
         // remove us from the list otherwise we will as a proxy be there multiple times
         // as the assertion passes through multiple times ???
         $authenticatingAuthorities = &$response['saml:Assertion']['saml:AuthnStatement']['saml:AuthnContext']['saml:AuthenticatingAuthority'];
         foreach ((array) $authenticatingAuthorities as $key => $authenticatingAuthority) {
-            if ($authenticatingAuthority['__v'] === $this->getCurrentMD('entityID')) {
+            if ($authenticatingAuthority['__v'] === $this->getCurrentEntity()) {
                 unset($authenticatingAuthorities[$key]);
             }
         }
-        if ($this->getCurrentMD('entityID') !== $sourceResponse['saml:Issuer']['__v']) {
+        if ($this->getCurrentEntityUrl('idPMetadataService') !== $sourceResponse['saml:Issuer']['__v']) {
             $authenticatingAuthorities[] = array('__v' => $sourceResponse['saml:Issuer']['__v']);
         }
 
-        if ($proxySP) {
-            $authenticatingAuthorities[] = array('__v' => $proxySP);
-        }
+        $acs = $this->_getRequestAssertionConsumer($request);
 
         $subjectConfirmation = &$response['saml:Assertion']['saml:Subject']['saml:SubjectConfirmation']['saml:SubjectConfirmationData'];
-        $subjectConfirmation['_Recipient'] = $response['_Destination'];
+        $subjectConfirmation['_Recipient']    = $acs['Location'];
         $subjectConfirmation['_InResponseTo'] = $request['_ID'];
+        $subjectConfirmation['_NotOnOrAfter'] = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
 
+        $response['saml:Assertion']['_ID'] = $this->getNewId();
+        $response['saml:Assertion']['_IssueInstant'] = $this->timeStamp();
+        $response['saml:Assertion']['saml:Conditions']['_NotBefore']    = $this->timeStamp();
+        $response['saml:Assertion']['saml:Conditions']['_NotOnOrAfter'] = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
         $response['saml:Assertion']['saml:Issuer'] = array('__v' => $response['saml:Issuer']['__v']);
         $response['saml:Assertion']['saml:Conditions']['saml:AudienceRestriction']['saml:Audience']['__v'] = $request['saml:Issuer']['__v'];
 
@@ -752,8 +531,8 @@ class Corto_ProxyServer {
     {
         $response = $this->_createBaseResponse($request);
 
-        $soon = $this->timeStamp($this->getCurrentMD('NotOnOrAfter', null, null, 300));
-        $sessionEnd = $this->timeStamp($this->getCurrentMD('SessionEnd', null, null, 60 * 60 * 12));
+        $soon       = $this->timeStamp($this->getConfig('NotOnOrAfter', 300));
+        $sessionEnd = $this->timeStamp($this->getConfig('SessionEnd'  , 60 * 60 * 12));
 
         $response['saml:Assertion'] = array(
             '_xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
@@ -761,37 +540,37 @@ class Corto_ProxyServer {
             '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
             '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
 
-            '_ID' => $this->getNewId(),
-            '_Version' => '2.0',
+            '_ID'           => $this->getNewId(),
+            '_Version'      => '2.0',
             '_IssueInstant' => $response['_IssueInstant'],
 
             'saml:Issuer' => array('__v' => $response['saml:Issuer']['__v']),
+            'ds:Signature' => '__placeholder__',
             'saml:Subject' => array(
                 'saml:NameID' => array(
-                    '_SPNameQualifier' => $this->getCurrentMD('entityID'),
-                    '_Format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
-                    '__v' => $this->getNewId(),
+                    '_SPNameQualifier'  => $this->getCurrentEntityUrl(),
+                    '_Format'           => 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+                    '__v'               => $this->getNewId(),
                 ),
                 'saml:SubjectConfirmation' => array(
                     '_Method' => 'urn:oasis:names:tc:SAML:2.0:cm:bearer',
                     'saml:SubjectConfirmationData' => array(
                         '_NotOnOrAfter' => $soon,
-                        # @todo is this the right Recipient?
-                        '_Recipient' => $response['_Destination'], # req issuer
+                        '_Recipient'    => $request['_AssertionConsumerServiceURL'], # req issuer
                         '_InResponseTo' => $request['_ID'],
                     ),
                 ),
             ),
             'saml:Conditions' => array(
-                '_NotBefore' => $response['_IssueInstant'],
+                '_NotBefore'    => $response['_IssueInstant'],
                 '_NotOnOrAfter' => $soon,
                 'saml:AudienceRestriction' => array(
                     'saml:Audience' => array('__v' => $request['saml:Issuer']['__v']),
                 ),
             ),
             'saml:AuthnStatement' => array(
-                '_AuthnInstant' => $response['_IssueInstant'],
-                '_SessionNotOnOrAfter' => $sessionEnd,
+                '_AuthnInstant'         => $response['_IssueInstant'],
+                '_SessionNotOnOrAfter'  => $sessionEnd,
                 'saml:SubjectLocality' => array(
                     '_Address' => $_SERVER['REMOTE_ADDR'],
                     '_DNSName' => $_SERVER['REMOTE_HOST'],
@@ -828,21 +607,24 @@ class Corto_ProxyServer {
     protected function _createBaseResponse($request)
     {
         $now = $this->timeStamp();
+        $destinationID = $request['saml:Issuer']['__v'];
+
         $response = array(
             Corto_XmlToArray::TAG_NAME_KEY => 'samlp:Response',
-            '__' => array(
+            Corto_XmlToArray::PRIVATE_KEY_PREFIX => array(
                 'paramname' => 'SAMLResponse',
-                'RelayState' => nvl($request['__'], 'RelayState')
+                'RelayState'=> $request['__']['RelayState'],
+                'destinationid' => $destinationID,
             ),
             '_xmlns:samlp' => 'urn:oasis:names:tc:SAML:2.0:protocol',
-            '_xmlns:saml' => 'urn:oasis:names:tc:SAML:2.0:assertion',
+            '_xmlns:saml'  => 'urn:oasis:names:tc:SAML:2.0:assertion',
 
-            '_ID' => $this->getNewId(),
-            '_Version' => '2.0',
+            '_ID'           => $this->getNewId(),
+            '_Version'      => '2.0',
             '_IssueInstant' => $now,
             '_InResponseTo' => $request['_ID'],
 
-            'saml:Issuer' => array('__v' => $this->_metadata['current']['entityID']),
+            'saml:Issuer' => array('__v' => $this->getCurrentEntityUrl('idPMetadataService', $destinationID, $request)),
             'samlp:Status' => array(
                 'samlp:StatusCode' => array(
                     '_Value' => 'urn:oasis:names:tc:SAML:2.0:status:Success',
@@ -850,55 +632,47 @@ class Corto_ProxyServer {
             ),
         );
 
-        $destinationID = $request['saml:Issuer']['__v'];
-        $response['__']['destinationid'] = $destinationID;
-        $remoteEntity = $this->getRemoteEntity($destinationID);
+        $acs = $this->_getRequestAssertionConsumer($request);
+        $response['_Destination']           = $acs['Location'];
+        $response['__']['ProtocolBinding']  = $acs['Binding'];
 
-        if ($acsUrl = nvl($request, '_AssertionConsumerServiceURL')) {
-            // @todo check that the request is signed before accepting acsURLs
-            // saml2int check that it is present in metadata may do for now ...
-            // but we have to have a sam2int config flag to enable this in the future
-            foreach ((array) $remoteEntity['SP']['AssertionConsumerService'] as $acs) {
-                if ($acs['Location'] == $acsUrl) {
-                    $response['_Destination'] = $acsUrl;
-                    $response['__']['ProtocolBinding'] = $request['_ProtocolBinding'];
-                    break;
-                }
-            }
-        } elseif ($acsindex = nvl($request, '_AssertionConsumerServiceIndex')
-                && isset($remoteEntity['SP']['AssertionConsumerService'][$acsindex])) {
-            $acs = $remoteEntity['SP']['AssertionConsumerService'][$acsindex];
-            $response['_Destination'] = $acs['Location'];
-            $response['__']['ProtocolBinding'] = $acs['Binding'];
-            //@todo return error when indexed acs is not found - not the default!
-        } else {
-            $acsindex = $remoteEntity['SP']['AssertionConsumerService']['default'];
-            $acs = $remoteEntity['SP']['AssertionConsumerService'][$acsindex];
-            $response['_Destination'] = $acs['Location'];
-            $response['__']['ProtocolBinding'] = $acs['Binding'];
-        }
-
-        if (!nvl($response, '_Destination')) {
-            throw new Corto_ProxyServer_Exception("No (allowed) Destination in request or metadata for: $destinationID");
+        if (!$response['_Destination']) {
+            throw new Corto_ProxyServer_Exception("No Destination in request or metadata for: $destinationID");
         }
 
         return $response;
     }
 
+    protected function _getRequestAssertionConsumer(array $request)
+    {
+        $acs = array();
+        if (isset($request['_AssertionConsumerServiceURL']) &&
+            isset($request['__']['WasSigned']) &&
+            $request['__']['WasSigned']===true) {
+
+            $acs['Location'] = $request['_AssertionConsumerServiceURL'];
+            $acs['Binding']  = $request['_ProtocolBinding'];
+        } else {
+            $remoteEntity = $this->getRemoteEntity($request['saml:Issuer']['__v']);
+            $acs = $remoteEntity['AssertionConsumerService'];
+        }
+        return $acs;
+    }
 
     function sendResponseToRequestIssuer($request, $response)
     {
-
         $requestIssuer = $request['saml:Issuer']['__v'];
-        unset($_SESSION[$request['_ID']]);
+        $sp = $this->getRemoteEntity($requestIssuer);
 
         if ($response['samlp:Status']['samlp:StatusCode']['_Value'] == 'urn:oasis:names:tc:SAML:2.0:status:Success') {
-            $this->saveSloInfo($response);
-            return $this->getBindingsModule()->send($response, $requestIssuer);
+
+            $this->filterOutputAssertionAttributes($response, $request);
+
+            return $this->getBindingsModule()->send($response, $sp);
         }
         else {
             unset($response['saml:Assertion']);
-            return $this->getBindingsModule()->send($response, $requestIssuer);
+            return $this->getBindingsModule()->send($response, $sp);
         }
     }
 
@@ -910,13 +684,10 @@ class Corto_ProxyServer {
 
         // Get the ID of the original request (from the SP)
         if (!isset($_SESSION[$id]['_InResponseTo'])) {
-            echo "<pre>";
-            print_r($_SESSION);
-            echo "</pre>";
+            $this->_server->getSessionLog()->debug(print_r($_SESSION, true));
             throw new Corto_ProxyServer_Exception("ID `$id` does not have a _InResponseTo?!?");
         }
         $originalRequestId = $_SESSION[$id]['_InResponseTo'];
-        unset($_SESSION[$id]);
 
         if (!isset($_SESSION[$originalRequestId]['SAMLRequest'])) {
             throw new Corto_ProxyServer_Exception('Response has no known Request');
@@ -924,20 +695,74 @@ class Corto_ProxyServer {
         return $_SESSION[$originalRequestId]['SAMLRequest'];
     }
 
-    ////////  TEMPLATE RENDERING /////////
+////////  ATTRIBUTE FILTERING /////////
+
+    public function filterInputAssertionAttributes(&$response, $request)
+    {
+        $hostedEntityMetaData = $this->_entities['current'];
+
+        $responseIssuer = $response['saml:Issuer']['__v'];
+        $idpEntityMetadata = $this->getRemoteEntity($responseIssuer);
+
+        $requestIssuer = $request['saml:Issuer']['__v'];
+        $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
+
+        if (isset($idpEntityMetadata['filter'])) {
+            $this->callAttributeFilter($idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
+        }
+        if (isset($hostedEntityMetaData['infilter'])) {
+            $this->callAttributeFilter($hostedEntityMetaData['infilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
+        }
+    }
+
+    public function filterOutputAssertionAttributes(&$response, $request)
+    {
+        $hostedMetaData = $this->_entities['current'];
+        $responseIssuer = $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['OriginalIssuer'];
+        $idpEntityMetadata = $this->getRemoteEntity($responseIssuer);
+
+        $requestIssuer = $request['saml:Issuer']['__v'];
+        $spEntityMetadata = $this->getRemoteEntity($requestIssuer);
+
+        if (isset($idpEntityMetadata['filter'])) {
+            $this->callAttributeFilter($idpEntityMetadata['filter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
+        }
+        if (isset($hostedMetaData['outfilter'])) {
+            $this->callAttributeFilter($hostedMetaData['outfilter'], $response, $request, $spEntityMetadata, $idpEntityMetadata);
+        }
+    }
+
+    protected function callAttributeFilter($callback, array &$response, array $request, array $spEntityMetadata, array $idpEntityMetadata)
+    {
+        if (!$callback || !is_callable($callback)) {
+            // @todo Non existing callbacks shouldn't give an exception, just a warning...
+            throw new Corto_ProxyServer_Exception('callback: ' . var_export($callback, true) . ' isn\'t callable');
+        }
+
+        $responseAssertionAttributes = &$response['saml:Assertion']['saml:AttributeStatement'][0]['saml:Attribute'];
+
+        // Take the attributes out
+        $responseAttributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
+        // Pass em along
+        call_user_func_array($callback, array(&$response, &$responseAttributes, $request, $spEntityMetadata, $idpEntityMetadata));
+        // Put em back where they belong
+        $responseAssertionAttributes = Corto_XmlToArray::array2attributes($responseAttributes);
+    }
+
+////////  TEMPLATE RENDERING /////////
 
     public function renderTemplate($templateName, $vars = array(), $parentTemplates = array())
     {
+        $this->getSessionLog()->debug("Rendering template '$templateName'");
         if (!is_array($vars)) {
             $vars = array('content' => $vars);
         }
 
-        $templateFileName = $this->_templatePath . $templateName . '.phtml';
+        $templateFileName = $templateName . '.phtml';
 
         ob_start();
-        extract($vars);
 
-        include($templateFileName);
+        $this->_renderTemplate($templateFileName, $vars);
 
         $content = ob_get_contents();
         ob_end_clean();
@@ -953,134 +778,39 @@ class Corto_ProxyServer {
         return $content;
     }
 
-    /// Filters ///
-
-    public function callfilters($phase, &$state = null, &$filters = null, &$data = null, $service = null)
+    protected function _renderTemplate($templateFileName, $vars)
     {
-        $cortopassthru = nvl($_POST, 'cortopassthru') . nvl($_GET, 'cortopassthru');
-        if ($phase == 'init') {
-            if ($cortopassthru) {
-                return false;
-            }
-            return true;
-        }
-        /*
-        * Backend need to have 'cortopassthru' in POST / GET - can be used as backend session id as well
-        * Corto data is always sent to backend - is in corto session anyway - no need to save in
-        * backend session as well!
-        */
-        $cortofirstcall = false;
+        extract($vars);
 
-        /*
-        * First time thru - set up session
-        * Need unique id as a user can have more than one filter active at any one time
-        */
-        #$dbt = debug_backtrace();
-        #$fileline = sha1($dbt[1]['file'] . $dbt[1]['line']);
-
-        if (empty($cortopassthru)) {
-            $cortopassthru = ID();
-        }
-        if (empty($_SESSION['corto_filter'][$cortopassthru])) {
-            $_SESSION['corto_filter'][$cortopassthru]['i'] = 0;
-            $_SESSION['corto_filter'][$cortopassthru]['state'] = $state;
-            $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
-            $_SESSION['corto_filter'][$cortopassthru]['phase'] = $phase;
-            $_SESSION['corto_filter'][$cortopassthru]['filters'] = $filters;
-            $cortofirstcall = true;
-            unset($_POST);
-            $_POST = null;
-        }
-
-        /*
-        * This is
-        */
-        if ($_SESSION['corto_filter'][$cortopassthru]['phase'] != $phase) {
-            return false;
-        }
-        /*
-        * Loop thru all the filters
-        * callfilter does NOT return if there is user interaction involved
-        * Stop when there are no more filters
-        */
-
-
-        while (true) {
-            $filter = nvl($_SESSION['corto_filter'][$cortopassthru]['filters'], $_SESSION['corto_filter'][$cortopassthru]['i']);
-            if (!$filter) {
-                $state = $_SESSION['corto_filter'][$cortopassthru]['state'];
-                #unset($_SESSION['corto_filter'][$cortopassthru]);
-                unset($_SESSION['corto_filter']);
-                unset($_POST['cortopassthru']);
-                unset($_GET['cortopassthru']);
-                return true;
-            }
-            $data = $_SESSION['corto_filter'][$cortopassthru]['data'];
-            $res = $this->callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall, $service);
-            if ($res) $data = $res;
-            $_SESSION['corto_filter'][$cortopassthru]['i']++;
-            $_SESSION['corto_filter'][$cortopassthru]['data'] = $data;
-            $cortofirstcall = true;
-            #unset($_POST);
-        }
-    }
-
-    private function callfilter($phase, $filter, $data, $cortopassthru, $cortofirstcall, $service)
-    {
-        $_POST['cortophase'] = $phase;
-        $_POST['cortodata'] = $data;
-        $_POST['cortocookiepath'] = "";
-        $_POST['cortopassthru'] = $cortopassthru;
-        $_POST['cortofirstcall'] = $cortofirstcall;
-        $_POST['cortoentityid'] = $this->getCurrentMD('entityID');
-        $_POST['cortoservice'] = $service;
-        if ($service) {
-            $_POST['cortolocation'] = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '/_VVPMCIP_';
-
-        } else {
-            $_POST['cortolocation'] = 'http' . (nvl($_SERVER, 'HTTPS') ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-        }
-
-
-        if ($thefilter = nvl($filter, 'type') == 'url') {
-            $_POST['cortotoken'] = $filter['token'];
-            $_POST['cortoreturn'] = 'json';
-
-            $content = http_build_query($_POST);
-            $headers = array('Host', 'User_Agent', 'Accept', 'Accept_Language', 'Accept_Encoding',
-                             'Accept_Charset', 'Cookie');
-            foreach ($headers as $h) {
-                $k = str_replace('_', '-', ucfirst($h));
-                $header .= "$k: " . $_SERVER['HTTP_' . strtoupper($h)] . "\r\n";
-            }
-            $header .= "Content-type: application/x-www-form-urlencoded\r\n";
-            $header .= 'Content-length: ' . strlen($content) . "\r\n";
-            $context = stream_context_create(array(
-                'http' => array(
-                    'method' => 'POST',
-                    'header' => $header,
-                    'content' => $content,
-                    'timeout' => 5,
-                ),
-            ));
-            $ret = file_get_contents($thefilter, false, $context);
-            if (in_array('X-Corto-Return: true', $http_response_header)) {
-                return json_decode($ret, 1);
-            } else {
-                foreach ($http_response_header as $header) {
-                    header($header);
+        $source = $this->getTemplateSource();
+        switch ($source['type'])
+        {
+            case self::TEMPLATE_SOURCE_MEMORY:
+                if (!isset($source['arguments'][$templateFileName])) {
+                    throw new Corto_ProxyServer_Exception("Unable to load template '$templateFileName' from memory!");
                 }
-                print $ret;
-                print_r($http_response_header);
-                exit;
-            }
-        } else {
-            $_POST['cortoreturn'] = 'array';
-            return call_user_func($filter, $_POST);
+
+                eval('?>' . $source['arguments'][$templateFileName] . '<?');
+                break;
+
+            case self::TEMPLATE_SOURCE_FILESYSTEM;
+                if (!isset($source['arguments']['FilePath'])) {
+                    throw new Corto_ProxyServer_Exception('Template path not set, unable to render templates from filesystem!');
+                }
+
+                $filePath = $source['arguments']['FilePath'] . $templateFileName;
+                if (!file_exists($filePath)) {
+                    throw new Corto_ProxyServer_Exception('Template file does not exist: ' . $filePath);
+                }
+
+                include($filePath);
+                break;
+            default:
+                throw new Corto_ProxyServer_Exception('No template source set! Please configure a template source with Corto_ProxyServer->setTemplateSource()');
         }
     }
 
-    //////// I/O /////////
+//////// I/O /////////
 
     /**
      * Parse the HTTP URL query string and return the (raw) parameters in an array.
@@ -1095,7 +825,7 @@ class Corto_ProxyServer {
         $rawGet = array();
         foreach (explode("&", $_SERVER['QUERY_STRING']) as $parameter) {
             if (preg_match("/^(.+)=(.*)$/", $parameter, $keyAndValue)) {
-                $rawGet[$keyAndValue[1]] = $keyAndValue[2];
+                 $rawGet[$keyAndValue[1]] = $keyAndValue[2];
             }
         }
         return $rawGet;
@@ -1104,14 +834,14 @@ class Corto_ProxyServer {
     public function redirect($location, $message)
     {
         $this->getSessionLog()->debug("Redirecting to $location");
-
-        if ($this->getCurrentMD('debug', null, null, false)) {
-            $output = $this->renderTemplate('redirect', array('location' => $location, 'message' => $message));
+        
+        if ($this->getConfig('debug', true)) {
+            $output = $this->renderTemplate('redirect', array('location'=>$location, 'message' => $message));
             $this->sendOutput($output);
         } else {
             $this->sendHeader('Location', $location);
         }
-        exit;
+
     }
 
     public function sendHeader($name, $value)
@@ -1121,11 +851,144 @@ class Corto_ProxyServer {
 
     public function sendOutput($rawOutput)
     {
-        return print $rawOutput;
+        return print $rawOutput; 
     }
 
-    //////// UTILITIES /////////
+    public function setCookie($name, $value, $expire = null, $path = null, $domain = null, $secure = null, $httpOnly = null)
+    {
+        return setcookie($name, $value, $expire, $path, $domain, $secure, $httpOnly);
+    }
 
+    public function getCookie($name, $defaultValue = null)
+    {
+        if (isset($_COOKIE[$name])) {
+            return $_COOKIE[$name];
+        }
+        return $defaultValue;
+    }
+
+//////// UTILITIES /////////
+
+    /**
+     * Sign a Corto_XmlToArray array with XML.
+     *
+     * @param  $element    Element to sign
+     * @return array Signed element
+     */
+    public function sign(array $element)
+    {
+        $certificates = $this->getCurrentEntitySetting('certificates', array());
+
+        $signature = array(
+            '__t' => 'ds:Signature',
+            '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
+            'ds:SignedInfo' => array(
+                '__t' => 'ds:SignedInfo',
+                '_xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#',
+                'ds:CanonicalizationMethod' => array(
+                    '_Algorithm' => 'http://www.w3.org/2001/10/xml-exc-c14n#',
+                ),
+                'ds:SignatureMethod' => array(
+                    '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
+                ),
+                'ds:Reference' => array(
+                    0 => array(
+                        '_URI' => '__placeholder__',
+                        'ds:Transforms' => array(
+                            'ds:Transform' => array(
+                                array(
+                                    '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+                                ),
+                                array(
+                                    '_Algorithm' => 'http://www.w3.org/2001/10/xml-exc-c14n#',
+                                ),
+                            ),
+                        ),
+                        'ds:DigestMethod' => array(
+                            '_Algorithm' => 'http://www.w3.org/2000/09/xmldsig#sha1',
+                        ),
+                        'ds:DigestValue' => array(
+                            '__v' => '__placeholder__',
+                        ),
+                    ),
+                ),
+            ),
+            'ds:SignatureValue' => array(
+                '__v' => '__placeholder__',
+            ),
+            'ds:KeyInfo' => array(
+                'ds:X509Data' => array(
+                    'ds:X509Certificate' => array(
+                        '__v' => $this->getCertDataFromPem($certificates['public']),
+                    ),
+                ),
+            ),
+        );
+
+        $canonicalXml = DOMDocument::loadXML(Corto_XmlToArray::array2xml($element))->firstChild->C14N(true, false);
+
+        $signature['ds:SignedInfo']['ds:Reference'][0]['ds:DigestValue']['__v'] = base64_encode(sha1($canonicalXml, TRUE));
+        $signature['ds:SignedInfo']['ds:Reference'][0]['_URI'] = "#" . $element['_ID'];
+
+        $canonicalXml2 = DOMDocument::loadXML(Corto_XmlToArray::array2xml($signature['ds:SignedInfo']))->firstChild->C14N(true, false);
+
+        if (!isset($certificates['private'])) {
+            throw new Corto_ProxyServer_Exception('Current entity has no private key, unable to sign message! Please set ["certificates"]["private"]!');
+        }
+        $privateKey = openssl_pkey_get_private($certificates['private']);
+        if ($privateKey === false) {
+            throw new Corto_ProxyServer_Exception("Current entity ['certificates']['private'] value is NOT a valid PEM formatted SSL private key?!? Value: " . $certificates['private']);
+        }
+
+        $signatureValue = null;
+        openssl_sign($canonicalXml2, $signatureValue, $privateKey);
+        openssl_free_key($privateKey);
+
+        $signature['ds:SignatureValue']['__v'] = base64_encode($signatureValue);
+
+        $element['ds:Signature'] = $signature;
+        $element[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Signed'] = true;
+
+        return $element;
+    }
+
+    public function getCertDataFromPem($pemKey)
+    {
+        $lines = explode("\n", $pemKey);
+        $data = '';
+        foreach ($lines as $line) {
+            $line = rtrim($line);
+            if ($line === '-----BEGIN CERTIFICATE-----') {
+                $data = '';
+            } elseif ($line === '-----END CERTIFICATE-----') {
+                break;
+            } else {
+                $data .= $line . PHP_EOL;
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * For a given url hosted by this Corto installation, get the EntityCode, remoteIdPMd5Hash and ServiceName.
+     *
+     * Gets the PATH_INFO from a URL like: http://host/path/corto.php/path/info
+     *
+     * @param string $url
+     */
+    public function getParametersFromUrl($url)
+    {
+        $urlPath = parse_url($url, PHP_URL_PATH); // /path/corto.php/EntityCode_remoteIdPMd5Hash/ServiceName
+        $currentPath = $_SERVER['SCRIPT_NAME']; // /path/corto.php
+
+        if (strpos($urlPath, $currentPath) !== 0) {
+            $message = "Unable to get Parameters from URL: '$url' for Corto installation at path: '$currentPath'";
+            throw new Corto_ProxyServer_Exception($message);
+        }
+
+        $uri = substr($currentPath, strlen($currentPath));
+        return $this->_getParametersFromUri($uri);
+    }
 
     /**
      * Generate a SAML datetime with a given delta in seconds.
@@ -1142,31 +1005,17 @@ class Corto_ProxyServer {
 
     public function getNewId()
     {
-        return ID();
+        return self::ID_PREFIX . sha1(uniqid(mt_rand(), true));
     }
 
-    /**
-     * Initialize corto session - to be able to handle multiple federations
-     * and entities the session name is a hash of entityID concatenated with the federation name
-     *
-     * @return void
-     */
     public function startSession()
     {
-        $cookie_path = $_SERVER['SCRIPT_NAME'];
-        $secure_cookie = nvl($_SERVER, 'HTTPS');
-        // IIS returns 'off' if not https
-        $secure_cookie = isset($secure_cookie) && $secure_cookie != 'off';
-        session_write_close();
-        // @todo remember general alert for non-https requests ...
-        // @todo what about INTERNAL bindings ???
-        session_set_cookie_params(0, $cookie_path, '', $secure_cookie);
-        session_name(sha1($this->_metadata['current']['entityID']));
+        session_set_cookie_params(0, $this->getConfig('cookie_path', '/'), '', $this->getConfig('use_secure_cookies', true));
+        session_name($this->_entities['current']['EntityCode']);
         session_start();
-        #$_SESSION['__entity__'] = $this->_metadata['current']['entityID'];
     }
 
-    protected function restartSession($newId, $newName)
+    public function restartSession($newId, $newName)
     {
         session_write_close();
 
@@ -1178,15 +1027,29 @@ class Corto_ProxyServer {
     /**
      * @return Corto_Log_Interface
      */
-    public
-    function getSystemLog()
+    public function getSystemLog()
     {
+        if (!isset($this->_systemLog)) {
+            $this->_systemLog = new Corto_Log_Dummy();
+        }
+
         return $this->_systemLog;
     }
 
     public function getSessionLog()
     {
-        return $this->_systemLog;
+        if (isset($this->_sessionLog)) {
+            return $this->_sessionLog;
+        }
+
+        if (!isset($this->_sessionLogDefault)) {
+            $this->_sessionLogDefault = new Corto_Log_Dummy();
+        }
+
+        $sessionLog = $this->_sessionLogDefault;
+        $sessionLog->setId(session_id());
+        $this->_sessionLog =$sessionLog;
+        return $this->_sessionLog;
     }
 
     public function setSystemLog(Corto_Log_Interface $log)
@@ -1194,4 +1057,8 @@ class Corto_ProxyServer {
         $this->_systemLog = $log;
     }
 
+    public function setSessionLogDefault($logDefault)
+    {
+        $this->_sessionLogDefault = $logDefault;
+    }
 }
