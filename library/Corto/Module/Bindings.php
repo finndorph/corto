@@ -720,7 +720,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         $messageType = $message['__']['paramname'];
 
         // Determine if we should sign the message
-        $wantRequestsSigned = ($remoteEntity['WantsAuthnRequestsSigned'] ||
+        $wantRequestsSigned = ($remoteEntity['AuthnRequestsSigned'] ||
                                 $this->_server->getCurrentEntitySetting('AuthnRequestsSigned'));
         $mustSign = ($messageType===self::KEY_REQUEST && $wantRequestsSigned);
         if ($mustSign) {

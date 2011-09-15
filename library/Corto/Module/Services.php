@@ -213,7 +213,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
     }
 
     /**
-     * Handle the forwarding of the user to the proper IdP after the WAYF screen.
+     * Handle the forwarding of the user to the proper IdP0 after the WAYF screen.
      *
      * @return void
      */
@@ -266,11 +266,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalDestination'] = $receivedResponse['_Destination'];
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding']     = $receivedResponse['__']['ProtocolBinding'];
 
-            // TEMPORARY HACK to fix processing
-            unset($receivedRequest['__']['voContext']);
-       	    unset($receivedRequest['__']['Transparent']);
-            $this->_server->setVirtualOrganisationContext(null);
-
+            $this->_server->setProcessingMode();
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
 
             // Change the destiny of the received response
@@ -429,10 +425,7 @@ class Corto_Module_Services extends Corto_Module_Abstract
         if (!empty($remainingProcessingEntities)) { // Moar processing!
             $nextProcessingEntity = array_shift($remainingProcessingEntities);
 
-            // TEMPORARY HACK to fix processing
-            unset($receivedRequest['__']['voContext']);
-       	    unset($receivedRequest['__']['Transparent']);
-            $this->_server->setVirtualOrganisationContext(null);
+            $this->_server->setProcessingMode();
 
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
 
@@ -454,6 +447,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
             unset($attributes['ServiceProvider']);
             $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
+
+            $this->_server->unsetProcessingMode();
 
             // Cache the response
             if ($this->_server->getCurrentEntitySetting('keepsession', false)) {
