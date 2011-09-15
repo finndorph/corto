@@ -572,7 +572,7 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
             $verified = openssl_verify(
                 $queryString,
                 base64_decode($message['__']['Signature']),
-                $publicKey
+                $publicKeyFallback
             );
         }
         
