@@ -190,6 +190,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalDestination'] = $receivedResponse['_Destination'];
             $_SESSION['Processing'][$receivedResponse['_ID']]['OriginalBinding']     = $receivedResponse['__']['ProtocolBinding'];
 
+            $this->_server->setProcessingMode();
+
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $receivedResponse);
 
             // Change the destiny of the received response
@@ -332,6 +334,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
         if (!empty($remainingProcessingEntities)) { // Moar processing!
             $nextProcessingEntity = array_shift($remainingProcessingEntities);
 
+            $this->_server->setProcessingMode();
+
             $newResponse = $this->_server->createEnhancedResponse($receivedRequest, $response);
 
             // Change the destiny of the received response
@@ -351,6 +355,8 @@ class Corto_Module_Services extends Corto_Module_Abstract
             $attributes = Corto_XmlToArray::attributes2array($responseAssertionAttributes);
             unset($attributes['ServiceProvider']);
             $responseAssertionAttributes = Corto_XmlToArray::array2attributes($attributes);
+
+            $this->_server->unsetProcessingMode();
 
             // Cache the response
             if ($this->_server->getCurrentEntitySetting('keepsession', false)) {

@@ -42,6 +42,7 @@ class Corto_ProxyServer
     protected $_attributes = array();
     protected $_modules = array();
     protected $_templateSource;
+    protected $_processingMode = false;
 
     public function __construct()
     {
@@ -49,6 +50,23 @@ class Corto_ProxyServer
     }
 
 //////// GETTERS / SETTERS /////////
+
+    public function setProcessingMode()
+    {
+        $this->_processingMode = true;
+        return $this;
+    }
+
+    public function unsetProcessingMode()
+    {
+        $this->_processingMode = false;
+        return $this;
+    }
+
+    public function isInProcessingMode()
+    {
+        return $this->_processingMode;
+    }
 
     /**
      * @return Corto_Module_Bindings
@@ -465,7 +483,7 @@ class Corto_ProxyServer
     {
         $response = $this->_createBaseResponse($request);
         $response[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['OriginalIssuer'] = $sourceResponse['saml:Assertion']['saml:Issuer']['__v'];
-        if (isset($request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) &&
+        if (!$this->_server->isInProcessingMode() && isset($request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) &&
             $request[Corto_XmlToArray::PRIVATE_KEY_PREFIX]['Transparent']) {
             $response['saml:Issuer']['__v'] = $sourceResponse['saml:Issuer']['__v'];
             $response['saml:Assertion']['saml:Issuer']['__v'] = $sourceResponse['saml:Assertion']['saml:Issuer']['__v'];
