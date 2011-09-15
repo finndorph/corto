@@ -155,12 +155,20 @@ class Corto_Module_Services extends Corto_Module_Abstract
     protected function _pickCachedResponse(array $cachedResponses, array $request, $requestIssuerEntityId)
     {
         // Then we look for OUT responses for this sp
+
+        $idpEntityIds = $this->_server->getIdpEntityIds();
         foreach ($cachedResponses as $cachedResponse) {
             if ($cachedResponse['type'] !== self::RESPONSE_CACHE_TYPE_OUT) {
                 continue;
             }
 
+            // Check if it is for the requester
             if ($cachedResponse['sp'] !== $requestIssuerEntityId) {
+                continue;
+            }
+
+            // Check if it is for a valid idp
+            if (!in_array($cachedResponse['idp'], $idpEntityIds)) {
                 continue;
             }
 
@@ -168,7 +176,6 @@ class Corto_Module_Services extends Corto_Module_Abstract
         }
 
         // Then we look for IN responses for this sp
-        $idpEntityIds = $this->_server->getIdpEntityIds();
         foreach ($cachedResponses as $cachedResponse) {
             if ($cachedResponse['type'] !== self::RESPONSE_CACHE_TYPE_IN) {
                 continue;
