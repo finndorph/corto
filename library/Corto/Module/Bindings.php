@@ -358,7 +358,9 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
         try {
             $remoteEntity = $this->_server->getRemoteEntity($messageIssuer);
         } catch (Corto_ProxyServer_Exception $e) {
-            throw new Corto_Module_Bindings_UnknownIssuerException("Issuer '{$messageIssuer}' is not a known remote entity? (please add SP/IdP to Remote Entities)");
+            throw new Corto_Module_Bindings_UnknownIssuerException(
+                "Issuer '{$messageIssuer}' is not a known remote entity? (please add SP/IdP to Remote Entities)"
+            );
         }
         return $remoteEntity;
     }
@@ -563,13 +565,13 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
 
         $verified = openssl_verify(
             $queryString,
-            base64_decode($message['Signature']),
+            base64_decode($message['__']['Signature']),
             $publicKey
         );
         if (!$verified && $publicKeyFallback) {
             $verified = openssl_verify(
                 $queryString,
-                base64_decode($message['Signature']),
+                base64_decode($message['__']['Signature']),
                 $publicKey
             );
         }
