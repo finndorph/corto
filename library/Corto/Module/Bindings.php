@@ -86,9 +86,6 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
     public function receiveRequest()
     {
         $request = $this->_receiveMessage(self::KEY_REQUEST);
-        $request['_ForceAuthn'] = isset($request['_ForceAuthn']) && ($request['_ForceAuthn'] == 'true' || $request['_ForceAuthn'] == '1');
-        $request['_IsPassive']  = isset($request['_IsPassive']) && ($request['_IsPassive'] == 'true' || $request['_IsPassive'] == '1');
-
         $this->_server->getSessionLog()->debug("Received request: " . var_export($request, true));
 
         $this->_verifyRequest($request);
@@ -371,11 +368,8 @@ class Corto_Module_Bindings extends Corto_Module_Abstract
      */
     protected function _c14nRequest(array &$request)
     {
-        $forceAuthentication = &$request['_ForceAuthn'];
-        $forceAuthentication = $forceAuthentication == 'true' || $forceAuthentication == '1';
-
-        $isPassive = &$request['_IsPassive'];
-        $isPassive = $isPassive == 'true' || $isPassive == '1';
+        $request['_ForceAuthn'] = isset($request['_ForceAuthn']) && ($request['_ForceAuthn'] == 'true' || $request['_ForceAuthn'] == '1');
+        $request['_IsPassive']  = isset($request['_IsPassive'])  && ($request['_IsPassive']  == 'true' || $request['_IsPassive']  == '1');
     }
 
     /**
