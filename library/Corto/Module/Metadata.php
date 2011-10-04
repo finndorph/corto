@@ -33,18 +33,18 @@ class Corto_Module_Metadata {
 
         // if (!($publicmdfile && $optimizedmdfile)) die("Can't export to $mdprefix" . "$cortoinstance...\n");
         
-		foreach ($md['public'] as $key => $tmpmd) {
-			if ($entitymd = nvl($tmpmd, 'md:EntityDescriptor')) {
-            	$md['public'][$key] = array('md:EntitiesDescriptor' => $tmpmd);
-        	}
-		}
+        foreach ($md['public'] as $key => $tmpmd) {
+            if ($entitymd = nvl($tmpmd, 'md:EntityDescriptor')) {
+                $md['public'][$key] = array('md:EntitiesDescriptor' => $tmpmd);
+            }
+        }
 
-		foreach ($md['public'] as $tmpmd) {
-        	foreach ((array) $tmpmd['md:EntitiesDescriptor'] as $entitiesDescriptor) {
-            	foreach ((array) $entitiesDescriptor['md:EntityDescriptor'] as $entityDescriptor) {
-                	$public[$entityDescriptor['_entityID']] = $entityDescriptor;
-            	}
-        	}
+        foreach ($md['public'] as $tmpmd) {
+            foreach ((array) $tmpmd['md:EntitiesDescriptor'] as $entitiesDescriptor) {
+                foreach ((array) $entitiesDescriptor['md:EntityDescriptor'] as $entityDescriptor) {
+                    $public[$entityDescriptor['_entityID']] = $entityDescriptor;
+                }
+            }
         }
 
         unset($public['_COMMON_']);
@@ -54,23 +54,23 @@ class Corto_Module_Metadata {
 
         print "Exporting $publicmdfile\n";
 
-		$optimized = null;
-		
-		foreach ($md['public'] as $tmpmd) {
-			// Ommit the $optimized param. Only used with _COMMON_ metadata
-        		$optimized = self::merge($optimized, self::optimizeMetaData('public', array('public' => $tmpmd)));
-		}
-		
-		foreach ($md['private'] as $tmpmd) {
-			$optimized = self::merge($optimized, self::optimizeMetaData('private', array('private' => $tmpmd)));
-		}
-		
+        $optimized = null;
+        
+        foreach ($md['public'] as $tmpmd) {
+            // Ommit the $optimized param. Only used with _COMMON_ metadata
+                $optimized = self::merge($optimized, self::optimizeMetaData('public', array('public' => $tmpmd)));
+        }
+        
+        foreach ($md['private'] as $tmpmd) {
+            $optimized = self::merge($optimized, self::optimizeMetaData('private', array('private' => $tmpmd)));
+        }
+        
         $url2service = self::prepareLookuptables($optimized);
 
-		foreach ($md['remote'] AS $tmpmd) {
-        	$optimized = self::merge($optimized, self::optimizeMetaData('remote', array('remote' => $tmpmd)));
-		}
-		
+        foreach ($md['remote'] AS $tmpmd) {
+            $optimized = self::merge($optimized, self::optimizeMetaData('remote', array('remote' => $tmpmd)));
+        }
+        
         $export = array('md' => $optimized, 'lookuptable' => $url2service);
         file_put_contents($optimizedmdfile . '.tmp', "<?php\nreturn " . var_export($export, true) . ";");
         @rename($optimizedmdfile . '.tmp', $optimizedmdfile);
@@ -169,14 +169,18 @@ class Corto_Module_Metadata {
 
 
                 foreach ((array) nvl($entityDescriptor, 'md:SPSSODescriptor') as $spsso) {
-                    foreach (array('AssertionConsumerService', 'SingleLogoutService') as $service) {
-                        foreach ((array) nvl($spsso, 'md:' . $service) as $acs) {
-                            $cortoEntityDescriptor['SP'][$service][$acs['_index']] = array(
-                                'Location' => $acs['_Location'],
-                                'Binding' => $acs['_Binding'],
-                                'isDefault' => empty($acs['_isDefault']) ? null : $acs['_isDefault'],
-                            );
-                        }
+                    foreach ((array) nvl($spsso, 'md:AssertionConsumerService') as $acs) {
+                        $cortoEntityDescriptor['SP']['AssertionConsumerService'][$acs['_index']] = array(
+                            'Location' => $acs['_Location'],
+                            'Binding' => $acs['_Binding'],
+                            'isDefault' => empty($acs['_isDefault']) ? null : $acs['_isDefault'],
+                        );
+                    }
+                    foreach ((array) nvl($spsso, 'md:SingleLogoutService') as $slo) {
+                        $cortoEntityDescriptor['SP']['SingleLogoutService'][] = array(
+                            'Location' => $slo['_Location'],
+                            'Binding' => $slo['_Binding'],
+                        );
                     }
 
                     // metadata overrides auto setting
