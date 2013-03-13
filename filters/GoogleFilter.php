@@ -12,8 +12,8 @@ class GoogleFilter {
     static function google($params)
     {
         if (nvl($params['cortodata']['response']['samlp:Status']['samlp:StatusCode'], '_Value') != 'urn:oasis:names:tc:SAML:2.0:status:Success') {
-            return $params['cortodata'];                                                                                             
-        } 
+            return $params['cortodata'];
+        }
         $uid = 'antonten';
         $acs = $params['cortodata']['response']['_Destination'];
         $assertion = &$params['cortodata']['response']['saml:Assertion'];

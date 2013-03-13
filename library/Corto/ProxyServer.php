@@ -719,8 +719,8 @@ class Corto_ProxyServer {
     {
         $response = $this->_createBaseResponse($request);
         $response['samlp:Status'] = $sourceResponse['samlp:Status'];
-        if (nvl($response['samlp:Status']['samlp:StatusCode'], '_Value') != 'urn:oasis:names:tc:SAML:2.0:status:Success') {              
-            return $response; 
+        if (nvl($response['samlp:Status']['samlp:StatusCode'], '_Value') != 'urn:oasis:names:tc:SAML:2.0:status:Success') {
+            return $response;
         }
         $response['saml:Assertion'] = $sourceResponse['saml:Assertion'];
         unset($response['saml:Assertion']['ds:Signature']);
@@ -1163,7 +1163,7 @@ class Corto_ProxyServer {
         session_write_close();
         // @todo remember general alert for non-https requests ...
         // @todo what about INTERNAL bindings ???
-        session_set_cookie_params(0, $cookie_path, '', $secure_cookie);
+        session_set_cookie_params ( 0 /* lifetime 0 = session */ , $cookie_path /* path */ , null /* domain */, $secure_cookie /* secure */, true /* httponly */);
         session_name(sha1($this->_metadata['current']['entityID']));
         session_start();
         #$_SESSION['__entity__'] = $this->_metadata['current']['entityID'];
